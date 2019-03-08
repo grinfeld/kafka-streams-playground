@@ -51,11 +51,12 @@ public class GeneratorApp implements CommandLineRunner {
                 List<UdhiMessage> messages = list.stream().map(i -> UdhiMessage.builder()
                         .size(MAX_PARTS.shortValue()).id(id).text("Stammm " + i)
                         .providerId(providerId)
+                        .sentTime(System.currentTimeMillis())
                         .ind(i.shortValue())
                         .build()).collect(Collectors.toList());
                 Collections.shuffle(messages);
                 return messages;
-            }).takeWhile(l -> counter.get() < takeWhile).flatMap(Flux::fromIterable)
+            }).takeWhile(l -> counter.get() <= takeWhile).flatMap(Flux::fromIterable)
         .subscribe(g ->
             producer.send(new ProducerRecord<>(topicName, g.getProviderId() + "_" + g.getId(), g), new Callback() {
                 @Override

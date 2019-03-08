@@ -28,11 +28,13 @@ public class GroupMessage {
     }
 
     public ReadyMessage convert() {
-        UdhiMessage firstMessage = parts.iterator().next();
+        UdhiMessage lastMessage = parts.stream().min((m1,m2) -> (int)(m1.getSentTime() - m2.getSentTime())).orElse(null);
+        if (lastMessage == null)
+            throw new IllegalArgumentException("Never should happen!");
         String content = parts.stream().sorted(Comparator.comparingInt(UdhiMessage::getInd))
                 .map(UdhiMessage::getText).collect(Collectors.joining());
-        return ReadyMessage.builder().fullMessage(true).id(firstMessage.getId())
+        return ReadyMessage.builder().fullMessage(true).id(lastMessage.getId()).sentTime(lastMessage.getSentTime())
                 .text(content)
-                .providerId(firstMessage.getProviderId()).build();
+                .providerId(lastMessage.getProviderId()).build();
     }
 }

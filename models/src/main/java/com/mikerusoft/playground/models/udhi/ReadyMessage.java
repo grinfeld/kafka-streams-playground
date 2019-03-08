@@ -14,4 +14,5 @@ public class ReadyMessage {
     private int providerId;
     private String text;
     private boolean fullMessage;
+    private long sentTime;
 }

@@ -15,6 +15,7 @@ public class UdhiMessage {
     private short ind;
     private int providerId;
     private String text;
+    private long sentTime;
 
     public boolean udhi() {
         return size > 1;
