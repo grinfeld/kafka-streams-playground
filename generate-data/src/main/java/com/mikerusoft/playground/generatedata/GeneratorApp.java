@@ -37,7 +37,7 @@ public class GeneratorApp implements CommandLineRunner {
     @Value("${topic-name:received-messages}")
     private String topicName;
 
-    @Value("${takeWhile:5}")
+    @Value("${takeWhile:10}")
     private int takeWhile;
 
     @Override
@@ -48,11 +48,13 @@ public class GeneratorApp implements CommandLineRunner {
             .map(list -> {
                 short id = (short) (counter.addAndGet(1) % Short.MAX_VALUE);
                 int providerId = random.nextInt(30) + 1;
+                Integer maxParts = providerId % 6 == 0 ? MAX_PARTS + 1 : MAX_PARTS;
                 List<UdhiMessage> messages = list.stream().map(i -> UdhiMessage.builder()
-                        .size(MAX_PARTS.shortValue()).id(id).text("Stammm " + i)
+                        .size(maxParts.shortValue()).id(id).text("Stammm " + i)
                         .providerId(providerId)
-                        .sentTime(System.currentTimeMillis())
+                        .sentTime(System.currentTimeMillis() + random.nextInt(10))
                         .ind(i.shortValue())
+                        //.ind(MAX_PARTS.shortValue())
                         .build()).collect(Collectors.toList());
                 Collections.shuffle(messages);
                 return messages;

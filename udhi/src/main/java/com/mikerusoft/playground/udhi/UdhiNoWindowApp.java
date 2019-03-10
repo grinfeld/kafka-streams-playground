@@ -40,8 +40,10 @@ public class UdhiNoWindowApp implements CommandLineRunner {
         final StreamsBuilder builder = new StreamsBuilder();
             KafkaStreamUtils.createStringJsonStream(UdhiMessage.class, "received-messages", builder)
                 .groupByKey()
-                .aggregate(GroupMessage::new, (k, v, a) -> {if (a.getSize() == 0) { a.setSize(v.getSize());} a.add(v); return a;},
-                        Materialized.with(Serdes.String(), new JSONSerde<>(GroupMessage.class)))
+                .aggregate(
+                    GroupMessage::new,
+                    (k, v, a) -> {if (a.getSize() == 0) { a.setSize(v.getSize());} a.add(v); return a;},
+                    Materialized.with(Serdes.String(), new JSONSerde<>(GroupMessage.class)))
                 .filter( (k, v) -> v.ready())
                 .toStream()
                 .filter((k,v) -> v != null)

@@ -18,6 +18,8 @@ public class GroupMessage {
     private short size;
     @lombok.Builder.Default
     private Set<UdhiMessage> parts = new HashSet<>();
+    @lombok.Builder.Default
+    private long timeIngested = System.currentTimeMillis();
 
     public boolean ready() {
         return size == parts.size();
