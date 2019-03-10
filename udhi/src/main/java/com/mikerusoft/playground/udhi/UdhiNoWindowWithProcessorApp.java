@@ -7,6 +7,7 @@ import com.mikerusoft.playground.models.udhi.ReadyMessage;
 import com.mikerusoft.playground.models.udhi.UdhiMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -72,7 +73,10 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
         topology =
                 topology.addSource("source", Pattern.compile(".*waiting-for-last-udhi.*"))
                 .addProcessor("pr", ExpirationProcessor::new, "source")
-                .connectProcessorAndStateStores("pr", "waiting-for-last-udhi");
+                .connectProcessorAndStateStores("pr", "waiting-for-last-udhi")
+                .addSink("processorResult", "ready-messages",
+                    new StringSerializer(), new JSONSerde<>(ReadyMessage.class), "pr")
+                ;
 
         System.out.println("" + topology.describe());
 
@@ -123,13 +127,13 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
                 }
                 toBeResendAsSingles.forEach(key -> {
                     // now we have UhiMessages fo which we didn't receive the full toBeResendAsSingles
-                    // so let's convert every udhi to single GroupMessage - send it again
-                    // to context - to be converted into ReadyMessage
+                    // so let's convert every udhi to single ReadyMessage - send it again
+                    // to processor's context child
                     // we have some possible "race condition" if we suddenly receive some missing part
                     // of same GroupMessage, before we finish
                     GroupMessage groupMessage = this.kvStore.get(key);
-                    List<GroupMessage> expand = groupMessage.expand();
-                    expand.forEach(g -> this.context.forward(key, g, To.all()));
+                    List<ReadyMessage> expand = groupMessage.expand();
+                    expand.forEach(g -> this.context.forward(key, g, To.child("processorResult")));
                     this.kvStore.delete(key);
                 });
                 // removed old records

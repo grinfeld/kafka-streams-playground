@@ -41,14 +41,18 @@ public class GroupMessage {
                 .providerId(lastMessage.getProviderId()).build();
     }
 
-    public List<GroupMessage> expand() {
-        return parts.stream().sorted(Comparator.comparingInt(UdhiMessage::getInd)).map(this::udhiToSingleGroupMessage).collect(Collectors.toList());
+    public List<ReadyMessage> expand() {
+        return parts.stream().sorted(Comparator.comparingInt(UdhiMessage::getInd)).map(this::udhiToSingleReadyMessage).collect(Collectors.toList());
     }
 
-    private GroupMessage udhiToSingleGroupMessage(UdhiMessage u) {
-        GroupMessage gr = new GroupMessage();
-        gr.setSize((short)1);
-        gr.add(u);
-        return gr;
+    private ReadyMessage udhiToSingleReadyMessage(UdhiMessage u) {
+        return ReadyMessage.builder()
+                .sentTime(u.getSentTime())
+                .fullMessage(false)
+                .id(u.getId())
+                .text(u.getText())
+                .providerId(u.getProviderId())
+                .build();
+
     }
 }
