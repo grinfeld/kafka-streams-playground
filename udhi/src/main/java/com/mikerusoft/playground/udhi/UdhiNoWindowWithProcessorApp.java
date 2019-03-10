@@ -17,6 +17,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.PunctuationType;
+import org.apache.kafka.streams.processor.To;
 import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -88,7 +89,7 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
 
     private static Materialized<String, GroupMessage, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
         return Materialized.<String, GroupMessage>as(supplier)
-        .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(GroupMessage.class)).withCachingDisabled();
+            .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(GroupMessage.class)).withCachingDisabled();
     }
 
     private static final long WAIT_TIME_MS = TimeUnit.SECONDS.toMillis(60);
@@ -128,12 +129,12 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
                     // of same GroupMessage, before we finish
                     GroupMessage groupMessage = this.kvStore.get(key);
                     List<GroupMessage> expand = groupMessage.expand();
-                    expand.forEach(g -> context.forward(key, g));
+                    expand.forEach(g -> this.context.forward(key, g, To.all()));
                     this.kvStore.delete(key);
                 });
                 // removed old records
                 toBeRemoved.forEach(key -> this.kvStore.delete(key));
-                context.commit();
+                this.context.commit();
             });
         }
 
