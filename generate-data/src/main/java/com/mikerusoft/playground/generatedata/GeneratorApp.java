@@ -42,7 +42,7 @@ public class GeneratorApp implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        KafkaProducer<String, UdhiMessage> producer = ProducerCreator.createProducer(url, new StringSerializer(), new JSONSerde<UdhiMessage>());
+        KafkaProducer<String, UdhiMessage> producer = ProducerCreator.createProducer(url, new StringSerializer(), new JSONSerde<>());
         DataGenerator.generateFlux(i -> (i + 1) % MAX_PARTS)
             .buffer(MAX_PARTS)
             .map(list -> {

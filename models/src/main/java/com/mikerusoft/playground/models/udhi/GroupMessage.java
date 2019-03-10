@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,8 +36,19 @@ public class GroupMessage {
             throw new IllegalArgumentException("Never should happen!");
         String content = parts.stream().sorted(Comparator.comparingInt(UdhiMessage::getInd))
                 .map(UdhiMessage::getText).collect(Collectors.joining());
-        return ReadyMessage.builder().fullMessage(true).id(lastMessage.getId()).sentTime(lastMessage.getSentTime())
+        return ReadyMessage.builder().fullMessage(parts.size() == size).id(lastMessage.getId()).sentTime(lastMessage.getSentTime())
                 .text(content)
                 .providerId(lastMessage.getProviderId()).build();
+    }
+
+    public List<GroupMessage> expand() {
+        return parts.stream().sorted(Comparator.comparingInt(UdhiMessage::getInd)).map(this::udhiToSingleGroupMessage).collect(Collectors.toList());
+    }
+
+    private GroupMessage udhiToSingleGroupMessage(UdhiMessage u) {
+        GroupMessage gr = new GroupMessage();
+        gr.setSize((short)1);
+        gr.add(u);
+        return gr;
     }
 }

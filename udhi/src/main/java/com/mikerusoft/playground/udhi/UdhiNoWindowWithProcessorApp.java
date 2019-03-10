@@ -26,11 +26,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import java.time.Duration;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.Executors;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @SpringBootApplication
 @Slf4j
@@ -46,26 +45,25 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        Properties config = KafkaStreamUtils.streamProperties("udhi-app" + UUID.randomUUID().toString(), url, UdhiMessage.class);
+        String appId = "udhi-app" + UUID.randomUUID().toString();
+        Properties config = KafkaStreamUtils.streamProperties(appId, url, UdhiMessage.class);
 
         final StreamsBuilder builder = new StreamsBuilder();
 
 
         KeyValueBytesStoreSupplier supplier = Stores.persistentKeyValueStore("waiting-for-last-udhi");
 
-        //addStateStore(builder, supplier);
-
         KafkaStreamUtils.createStringJsonStream(UdhiMessage.class, "received-messages", builder)
             .groupByKey()
             .aggregate(
                 GroupMessage::new,
-                (k, v, a) -> {if (a.getSize() == 0) { a.setSize(v.getSize());} a.add(v); return a;},
+                (key, message, group) -> addMessageToGroup(message, group),
                 defineAggregateStore(supplier)
             )
-            .filter( (k, v) -> v.ready())
+            .filter( (key, group) -> group.ready())
             .toStream()
-            .filter((k,v) -> v != null)
-            .map( (k, v) -> new KeyValue<>(k, v.convert()))
+            .filter((key,group) -> group != null)
+            .map( (key, group) -> new KeyValue<>(key, group.convert()))
             .to("ready-messages", Produced.with(Serdes.String(), new JSONSerde<>(ReadyMessage.class)));
 
         Topology topology = builder.build();
@@ -82,10 +80,18 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
         KafkaStreamUtils.runStream(kafkaStreams);
     }
 
+    private static GroupMessage addMessageToGroup(UdhiMessage v, GroupMessage a) {
+        if (a.getSize() == 0) { a.setSize(v.getSize());}
+        a.add(v);
+        return a;
+    }
+
     private static Materialized<String, GroupMessage, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
         return Materialized.<String, GroupMessage>as(supplier)
         .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(GroupMessage.class)).withCachingDisabled();
     }
+
+    private static final long WAIT_TIME_MS = TimeUnit.SECONDS.toMillis(60);
 
     public static class ExpirationProcessor implements Processor {
 
@@ -93,26 +99,59 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
         private KeyValueStore<String, GroupMessage> kvStore;
 
         @Override
+        @SuppressWarnings("unchecked")
         public void init(ProcessorContext context) {
             this.context = context;
-            this.kvStore= (KeyValueStore<String, GroupMessage>) context.getStateStore("waiting-for-last-udhi");
-            this.context.schedule(1000L, PunctuationType.STREAM_TIME, (timestamp) -> {
-                this.kvStore.all().forEachRemaining(keyValue -> {
+            this.kvStore = (KeyValueStore<String, GroupMessage>) context.getStateStore("waiting-for-last-udhi");
+            this.context.schedule(5000L, PunctuationType.WALL_CLOCK_TIME, (timestamp) -> {
+                long current = System.currentTimeMillis();
+                List<String> toBeResendAsSingles = new ArrayList<>();
+                List<String> toBeRemoved = new ArrayList<>();
+                KeyValueIterator<String, GroupMessage> all = this.kvStore.all();
+                while (all.hasNext()) {
+                    KeyValue<String, GroupMessage> keyValue = all.next();
                     String key = keyValue.key;
                     GroupMessage value = keyValue.value;
-                    context.forward(key, value);
+                    if (!value.ready() && isExpired(current, value)) {
+                        toBeResendAsSingles.add(key);
+                        log.info("Prepared to remove value with key {} and indexes {}",
+                                key, joinIndexesToString(value));
+                    } else if (value.ready() && isExpired(current, value)) {
+                        toBeRemoved.add(key);
+                    }
+                }
+                toBeResendAsSingles.forEach(key -> {
+                    // now we have UhiMessages fo which we didn't receive the full toBeResendAsSingles
+                    // so let's convert every udhi to single GroupMessage - send it again
+                    // to context - to be converted into ReadyMessage
+                    // we have some possible "race condition" if we suddenly receive some missing part
+                    // of same GroupMessage, before we finish
+                    GroupMessage groupMessage = this.kvStore.get(key);
+                    List<GroupMessage> expand = groupMessage.expand();
+                    expand.forEach(g -> context.forward(key, g));
+                    this.kvStore.delete(key);
                 });
+                // removed old records
+                toBeRemoved.forEach(key -> this.kvStore.delete(key));
+                context.commit();
             });
+        }
+
+        private boolean isExpired(long current, GroupMessage value) {
+            return current - value.getTimeIngested() > WAIT_TIME_MS;
+        }
+
+        private static String joinIndexesToString(GroupMessage value) {
+            return value.getParts().stream().map(UdhiMessage::getInd).map(String::valueOf).collect(Collectors.joining(","));
         }
 
         @Override
         public void process(Object key, Object value) {
-            System.out.println(key);
+            // nothing to do since this processor is called on any "waiting-for-last-udhi"
+            // ingestion for aggregator topic, which is processed by stream's aggregate method, too
         }
 
         @Override
-        public void close() {
-
-        }
+        public void close() {}
     }
 }
