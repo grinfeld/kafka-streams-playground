@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(builderClassName = "Builder", toBuilder = true)
-public class ReceivedMessage implements Message {
+public class ReceivedMessage {
     private long receivedTime;
     private String id;
     private String from;
