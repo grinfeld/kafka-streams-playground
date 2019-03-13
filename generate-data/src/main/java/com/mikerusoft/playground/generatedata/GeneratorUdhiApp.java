@@ -18,7 +18,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Component
+@Component("udhi")
 public class GeneratorUdhiApp {
 
     private static final Random random = new Random();
@@ -45,12 +45,12 @@ public class GeneratorUdhiApp {
                 int providerId = random.nextInt(30) + 1;
                 final Integer maxParts = providerId % 6 == 0 ? this.maxParts + 1 : this.maxParts;
                 List<UdhiMessage> messages = list.stream().map(i -> UdhiMessage.builder()
-                        .size(maxParts.shortValue()).id(id).text("Stammm " + i)
-                        .providerId(providerId)
-                        .sentTime(System.currentTimeMillis() + random.nextInt(10))
-                        .ind(i.shortValue())
-                        //.ind(this.maxParts.shortValue())
-                        .build()).collect(Collectors.toList());
+                    .size(maxParts.shortValue()).id(id).text("Stammm " + i)
+                    .providerId(providerId)
+                    .sentTime(System.currentTimeMillis() + random.nextInt(10))
+                    .ind(i.shortValue())
+                    //.ind(this.maxParts.shortValue())
+                    .build()).collect(Collectors.toList());
                 Collections.shuffle(messages);
                 return messages;
             }).takeWhile(l -> counter.get() <= takeWhile).flatMap(Flux::fromIterable)

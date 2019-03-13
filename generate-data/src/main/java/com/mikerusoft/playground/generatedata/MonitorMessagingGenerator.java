@@ -3,14 +3,12 @@ package com.mikerusoft.playground.generatedata;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mikerusoft.playground.generatedata.kafka.ProducerCreator;
-import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import com.mikerusoft.playground.models.monitoring.MessageStatus;
 import com.mikerusoft.playground.models.monitoring.ReceivedMessage;
 import com.mikerusoft.playground.models.monitoring.SentMessage;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.Random;
 import java.util.UUID;
 
-@Component
+@Component("monitor")
 public class MonitorMessagingGenerator {
 
     private static final Random random = new Random();
