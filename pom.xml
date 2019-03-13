@@ -8,6 +8,7 @@
         <module>models</module>
         <module>udhi</module>
         <module>kafka-streams-init</module>
+        <module>message-monitoring</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>

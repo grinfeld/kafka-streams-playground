@@ -9,13 +9,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(builderClassName = "Builder", toBuilder = true)
-public class SentMessage implements Message {
+public class MessageMonitor {
     private String id;
     private String providerId;
-    private String extMessageId;
-    private String from;
-    private String to;
-    private String status;
-    private long statusTime;
     private long sentTime;
+    private long receivedTime;
+    private long drStatusTime;
+    private String drStatus;
+    private String extMessageId;
+    private long sentStatusTime;
+    private String sentStatus;
 }
