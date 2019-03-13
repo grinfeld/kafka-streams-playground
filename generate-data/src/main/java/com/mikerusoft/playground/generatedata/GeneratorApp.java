@@ -15,8 +15,12 @@ public class GeneratorApp implements CommandLineRunner {
     @Autowired
     private GeneratorUdhiApp udhiApp;
 
+    @Autowired
+    private MonitorMessagingGenerator monitorApp;
+
     @Override
     public void run(String... args) throws Exception {
-        udhiApp.run();
+        // udhiApp.run();
+        monitorApp.run();
     }
 }
