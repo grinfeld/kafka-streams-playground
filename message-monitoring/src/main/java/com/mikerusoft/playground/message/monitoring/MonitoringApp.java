@@ -72,7 +72,10 @@ public class MonitoringApp implements CommandLineRunner {
             JoinWindows.of(TimeUnit.MINUTES.toMillis(15)), // todo: check what it relates to ->
             Joined.with(Serdes.String(),
                 new JSONSerde<>(MessageMonitor.class), new JSONSerde<>(MessageStatus.class))
-        );
+        )
+        // we propagate ony messages, we didn't send or didn't receive dr
+        .filter((k, m) -> m.getDrStatus() == null || m.getDrStatus() == null)
+        .to("message-monitoring");
 
         Topology topology = receivedMessagesBuilder.build();
         System.out.println("" + topology.describe());
