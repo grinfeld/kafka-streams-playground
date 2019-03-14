@@ -62,14 +62,14 @@ public class MonitoringApp implements CommandLineRunner {
                 .sentStatusTime(s.getStatusTime())
                 .sentStatus(s.getStatus())
                 .build(),
-            JoinWindows.of(TimeUnit.MINUTES.toMillis(10)),
+            JoinWindows.of(TimeUnit.SECONDS.toMillis(10)),
             Joined.with(Serdes.String(),
                 new JSONSerde<>(ReceivedMessage.class), new JSONSerde<>(SentMessage.class))
         ).join(statusMessagesStream, (st, m) -> st.toBuilder()
                 .drStatus(m.getStatus())
                 .drStatusTime(m.getStatusTime())
                 .build(),
-            JoinWindows.of(TimeUnit.MINUTES.toMillis(15)), // todo: check what it relates to ->
+            JoinWindows.of(TimeUnit.SECONDS.toMillis(15)), // todo: check what it relates to -> start of stream or previous join
             Joined.with(Serdes.String(),
                 new JSONSerde<>(MessageMonitor.class), new JSONSerde<>(MessageStatus.class))
         )

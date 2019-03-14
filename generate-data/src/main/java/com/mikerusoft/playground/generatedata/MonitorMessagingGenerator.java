@@ -75,7 +75,7 @@ public class MonitorMessagingGenerator implements Generator {
                         .status("DELIVERED")
                         .statusTime(s.getStatusTime() + 15)
                         .build()
-                ).subscribe()
+                ).subscribe(s -> producer.send(new ProducerRecord<String, byte[]>(topicName3, s.getId(), serialize(s))))
                 ;
     }
 

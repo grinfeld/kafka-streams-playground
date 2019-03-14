@@ -11,7 +11,7 @@ import org.springframework.context.ApplicationContext;
 public class GeneratorApp implements CommandLineRunner {
 
     public static void main(String[] args) {
-        SpringApplication.run(GeneratorUdhiApp.class, args);
+        SpringApplication.run(GeneratorApp.class, args);
     }
 
     @Autowired
