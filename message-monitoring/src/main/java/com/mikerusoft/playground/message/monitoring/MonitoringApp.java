@@ -71,6 +71,7 @@ public class MonitoringApp implements CommandLineRunner {
             Joined.with(Serdes.String(),
                 new JSONSerde<>(MessageMonitor.class), new JSONSerde<>(SentMessage.class))
         ).leftJoin(statusMessagesStream, (st, m) -> m != null ? st.toBuilder()
+                .id(m.getId())
                 .drStatus(m.getStatus())
                 .extMessageId(m.getExtMessageId())
                 .providerId(m.getProviderId())
@@ -84,7 +85,7 @@ public class MonitoringApp implements CommandLineRunner {
         .windowedBy(TimeWindows.of(TimeUnit.SECONDS.toMillis(120)))
         .aggregate(
             () -> MessageMonitor.builder().build(),
-            (k, v, a) -> collectMonitorInfoPerMessage(v, a),
+            (k, v, a) -> a.merge(v),
             Materialized.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class))
         )
         .toStream()
@@ -96,26 +97,5 @@ public class MonitoringApp implements CommandLineRunner {
         System.out.println("" + topology.describe());
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
-
-    }
-
-    private MessageMonitor collectMonitorInfoPerMessage(MessageMonitor v, MessageMonitor a) {
-        MessageMonitor.Builder mmBuilder = a.toBuilder();
-        mmBuilder.receivedTime(v.getReceivedTime());
-        if (v.getDrStatus() != null) {
-            mmBuilder =
-                mmBuilder.drStatusTime(v.getDrStatusTime()).drStatus(v.getDrStatus());
-        }
-        if (v.getSentStatus() != null) {
-            mmBuilder =
-                mmBuilder.sentStatus(v.getSentStatus()).sentStatusTime(v.getSentStatusTime());
-        }
-        if (v.getExtMessageId() == null)
-            mmBuilder.extMessageId(v.getExtMessageId());
-        if (v.getId() == null)
-            mmBuilder.id(v.getId());
-        if (v.getProviderId() == null)
-            mmBuilder.providerId(v.getProviderId());
-        return mmBuilder.build();
     }
 }
