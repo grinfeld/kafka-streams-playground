@@ -52,6 +52,7 @@ public class MonitorMessagingGenerator implements Generator {
                         .receivedTime(System.currentTimeMillis())
                         .from("97254440" + i)
                         .to("97254430" + i)
+                        .order(i)
                         .build()
                 )
                 .buffer()
@@ -61,8 +62,10 @@ public class MonitorMessagingGenerator implements Generator {
                 })
                 .flatMap(Flux::fromIterable)
                 .doOnNext(r -> producer.send(new ProducerRecord<String, byte[]>(topicName1, r.getId(), serialize(r))))
+                .filter(r -> r.getOrder() % 4 != 0)
                 .map(r ->
                     SentMessage.builder()
+                        .order(r.getOrder())
                         .extMessageId(UUID.randomUUID().toString())
                         .from(r.getFrom())
                         .to(r.getTo())
@@ -80,6 +83,7 @@ public class MonitorMessagingGenerator implements Generator {
                 })
                 .flatMap(Flux::fromIterable)
                 .doOnNext(s -> producer.send(new ProducerRecord<String, byte[]>(topicName2, s.getId(), serialize(s))))
+                .filter(s -> s.getOrder() % 6 != 0)
                 .map(s ->
                     MessageStatus.builder()
                         .id(s.getId())

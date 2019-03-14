@@ -15,4 +15,5 @@ public class ReceivedMessage {
     private String from;
     private String to;
     private String text;
+    private int order;
 }

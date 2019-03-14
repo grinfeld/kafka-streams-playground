@@ -9,6 +9,7 @@ import com.mikerusoft.playground.models.monitoring.ReceivedMessage;
 import com.mikerusoft.playground.models.monitoring.SentMessage;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
@@ -58,31 +59,63 @@ public class MonitoringApp implements CommandLineRunner {
                     .receivedTime(v.getReceivedTime())
                     .id(v.getId())
                     .build())
-        .join(sentMessagesStream, (r, s) -> r.toBuilder()
-                    .extMessageId(s.getExtMessageId())
-                    .sentTime(s.getSentTime())
-                    .sentStatusTime(s.getStatusTime())
-                    .sentStatus(s.getStatus())
-                    .build(),
-            JoinWindows.of(TimeUnit.SECONDS.toMillis(100)),
+        .leftJoin(sentMessagesStream, (r, s) -> s != null ? r.toBuilder()
+                .id(s.getId())
+                .extMessageId(s.getExtMessageId())
+                .sentTime(s.getSentTime())
+                .providerId(s.getProviderId())
+                .sentStatusTime(s.getStatusTime())
+                .sentStatus(s.getStatus())
+                .build() : r.toBuilder().build(),
+            JoinWindows.of(TimeUnit.SECONDS.toMillis(60)),
             Joined.with(Serdes.String(),
                 new JSONSerde<>(MessageMonitor.class), new JSONSerde<>(SentMessage.class))
-        ).join(statusMessagesStream, (st, m) -> st.toBuilder()
+        ).leftJoin(statusMessagesStream, (st, m) -> m != null ? st.toBuilder()
                 .drStatus(m.getStatus())
+                .extMessageId(m.getExtMessageId())
+                .providerId(m.getProviderId())
                 .drStatusTime(m.getStatusTime())
-                .build(),
-            JoinWindows.of(TimeUnit.SECONDS.toMillis(150)), // todo: check what it relates to -> start of stream or previous join
+                .build() : st.toBuilder().build(),
+            JoinWindows.of(TimeUnit.SECONDS.toMillis(60)), // todo: check what it relates to -> start of stream, previous join or event emitted from stream
             Joined.with(Serdes.String(),
                 new JSONSerde<>(MessageMonitor.class), new JSONSerde<>(MessageStatus.class))
         )
-        // we propagate ony messages, we didn't send or didn't receive dr
+        .groupByKey()
+        .windowedBy(TimeWindows.of(TimeUnit.SECONDS.toMillis(120)))
+        .aggregate(
+            () -> MessageMonitor.builder().build(),
+            (k, v, a) -> collectMonitorInfoPerMessage(v, a),
+            Materialized.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class))
+        )
+        .toStream()
         .filter((k, m) -> m.getDrStatus() == null || m.getDrStatus() == null)
-        .to("message-monitoring");
+        .map((key, v) -> new KeyValue<>(key.key(), v))
+        .to("message-monitoring", Produced.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class)));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
 
+    }
+
+    private MessageMonitor collectMonitorInfoPerMessage(MessageMonitor v, MessageMonitor a) {
+        MessageMonitor.Builder mmBuilder = a.toBuilder();
+        mmBuilder.receivedTime(v.getReceivedTime());
+        if (v.getDrStatus() != null) {
+            mmBuilder =
+                mmBuilder.drStatusTime(v.getDrStatusTime()).drStatus(v.getDrStatus());
+        }
+        if (v.getSentStatus() != null) {
+            mmBuilder =
+                mmBuilder.sentStatus(v.getSentStatus()).sentStatusTime(v.getSentStatusTime());
+        }
+        if (v.getExtMessageId() == null)
+            mmBuilder.extMessageId(v.getExtMessageId());
+        if (v.getId() == null)
+            mmBuilder.id(v.getId());
+        if (v.getProviderId() == null)
+            mmBuilder.providerId(v.getProviderId());
+        return mmBuilder.build();
     }
 }

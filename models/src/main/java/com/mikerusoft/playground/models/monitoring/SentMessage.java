@@ -18,4 +18,5 @@ public class SentMessage {
     private String status;
     private long statusTime;
     private long sentTime;
+    private int order;
 }
