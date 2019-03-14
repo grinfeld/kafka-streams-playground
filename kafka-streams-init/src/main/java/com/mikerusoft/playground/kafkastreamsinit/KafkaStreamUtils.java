@@ -48,6 +48,7 @@ public class KafkaStreamUtils {
             public void run() {
                 stream.close();
                 latch.countDown();
+                stream.cleanUp(); // not for production :)
             }
         });
 

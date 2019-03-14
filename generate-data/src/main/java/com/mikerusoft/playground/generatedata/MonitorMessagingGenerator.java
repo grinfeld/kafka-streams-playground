@@ -13,7 +13,10 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 import java.util.UUID;
 
@@ -51,6 +54,12 @@ public class MonitorMessagingGenerator implements Generator {
                         .to("97254430" + i)
                         .build()
                 )
+                .buffer()
+                .map(l -> {
+                    Collections.shuffle(l);
+                    return new ArrayList<>(l);
+                })
+                .flatMap(Flux::fromIterable)
                 .doOnNext(r -> producer.send(new ProducerRecord<String, byte[]>(topicName1, r.getId(), serialize(r))))
                 .map(r ->
                     SentMessage.builder()
@@ -64,6 +73,12 @@ public class MonitorMessagingGenerator implements Generator {
                         .statusTime(r.getReceivedTime() + 15)
                         .build()
                 )
+                .buffer()
+                .map(l -> {
+                    Collections.shuffle(l);
+                    return new ArrayList<>(l);
+                })
+                .flatMap(Flux::fromIterable)
                 .doOnNext(s -> producer.send(new ProducerRecord<String, byte[]>(topicName2, s.getId(), serialize(s))))
                 .map(s ->
                     MessageStatus.builder()
