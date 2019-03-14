@@ -18,7 +18,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Component("monitor")
-public class MonitorMessagingGenerator {
+public class MonitorMessagingGenerator implements Generator {
 
     private static final Random random = new Random();
 

@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component("udhi")
-public class GeneratorUdhiApp {
+public class GeneratorUdhiApp implements Generator {
 
     private static final Random random = new Random();
     private static AtomicInteger counter = new AtomicInteger(1);

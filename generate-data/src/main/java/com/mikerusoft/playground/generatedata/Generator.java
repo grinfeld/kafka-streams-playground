@@ -1,5 +1,5 @@
 package com.mikerusoft.playground.generatedata;
 
 public interface Generator {
-    void run();
+    void run() throws Exception;
 }
