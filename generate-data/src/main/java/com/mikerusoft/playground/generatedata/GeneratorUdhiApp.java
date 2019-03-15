@@ -3,7 +3,7 @@ package com.mikerusoft.playground.generatedata;
 import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import com.mikerusoft.playground.generatedata.kafka.ProducerCreator;
+import com.mikerusoft.playground.kafkastreamsinit.producer.ProducerCreator;
 import com.mikerusoft.playground.models.udhi.UdhiMessage;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;

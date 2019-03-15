@@ -1,4 +1,4 @@
-package com.mikerusoft.playground.generatedata.kafka;
+package com.mikerusoft.playground.kafkastreamsinit.producer;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;

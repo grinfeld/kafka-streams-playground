@@ -2,7 +2,7 @@ package com.mikerusoft.playground.generatedata;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mikerusoft.playground.generatedata.kafka.ProducerCreator;
+import com.mikerusoft.playground.kafkastreamsinit.producer.ProducerCreator;
 import com.mikerusoft.playground.models.monitoring.MessageStatus;
 import com.mikerusoft.playground.models.monitoring.ReceivedMessage;
 import com.mikerusoft.playground.models.monitoring.SentMessage;
