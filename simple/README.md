@@ -2,6 +2,7 @@ Kafka-Streams and Windowing
 --------------------
 
 1. windowedBy operator with static window
+    * events emitted immediately after received (no suppress)
     1. No TimeExtractor (window size: 2 minutes) **process time**
         * window is opened every 2 minutes. Actually, we don't have late arrival messages, so 
         messages entered inside 2 minute window
