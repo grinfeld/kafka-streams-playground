@@ -27,6 +27,7 @@ public class MyController {
 
     private KafkaProducer<String, MyObject> producer;
 
+
     public MyController(@Value("${broker_url:localhost:9092}") String url) {
         this.producer = ProducerCreator.createProducer(url, new StringSerializer(), new JSONSerde<>(MyObject.class));
     }
