@@ -46,9 +46,9 @@ public class KafkaStreamUtils {
         Runtime.getRuntime().addShutdownHook(new Thread("stream-pipe-shutdown-hook") {
             @Override
             public void run() {
+                stream.cleanUp(); // not for production :)
                 stream.close();
                 latch.countDown();
-                stream.cleanUp(); // not for production :)
             }
         });
 

@@ -40,7 +40,7 @@ public class MyController {
         if (data.getTimestamp() > 0) {
             date = new Date(data.getTimestamp());
         }
-        log.info("Received data {} for {}", data, String.valueOf(date));
+        log.info("Received data {} for {}", data, date);
 
 
         RecordMetadata record = producer.send(new ProducerRecord<>(topicName, data.getKey(), data)).get();

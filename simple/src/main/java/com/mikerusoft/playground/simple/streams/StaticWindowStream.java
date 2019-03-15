@@ -12,6 +12,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -21,6 +22,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component("static")
 public class StaticWindowStream implements WindowStream {
+
+    @Value("${windowDurationSec:120}")
+    private int windowDurationSec;
 
     public void runStream(String url) {
         Properties config = KafkaStreamUtils.streamProperties("window-stream", url, MyObject.class);
@@ -36,7 +40,7 @@ public class StaticWindowStream implements WindowStream {
         stream
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
             .groupByKey()
-            .windowedBy(TimeWindows.of(TimeUnit.SECONDS.toMillis(120)))
+            .windowedBy(TimeWindows.of(TimeUnit.SECONDS.toMillis(windowDurationSec)))
             .aggregate(Counter::new, (k, v, a) -> a.op(1),
                     Materialized.with(Serdes.String(), new JSONSerde<>(Counter.class)))
             .toStream()

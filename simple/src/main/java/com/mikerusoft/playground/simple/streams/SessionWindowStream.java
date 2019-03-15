@@ -12,6 +12,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -21,6 +22,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component("session")
 public class SessionWindowStream implements WindowStream {
+
+    @Value("${expireAtSec:240}")
+    private int expireAtSec;
+
+    @Value("${windowDurationSec:120}")
+    private int windowDurationSec;
 
     public void runStream(String url) {
         Properties config = KafkaStreamUtils.streamProperties("window-stream", url, MyObject.class);
@@ -36,7 +43,7 @@ public class SessionWindowStream implements WindowStream {
         stream
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
             .groupByKey()
-            .windowedBy(SessionWindows.with(TimeUnit.SECONDS.toMillis(120)))
+            .windowedBy(createWindow())
             .aggregate(Counter::new, (k, v, a) -> a.op(1),
                 (k, a1, a2) -> new Counter().op(a1.getCounter()).op(a2.getCounter()),
                 Materialized.with(Serdes.String(), new JSONSerde<>(Counter.class))
@@ -54,6 +61,13 @@ public class SessionWindowStream implements WindowStream {
         System.out.println("" + topology.describe());
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
+    }
+
+    private SessionWindows createWindow() {
+        SessionWindows window = SessionWindows.with(TimeUnit.SECONDS.toMillis(windowDurationSec));
+        if (expireAtSec > 0)
+            window = window.until(TimeUnit.SECONDS.toMillis(expireAtSec));
+        return window;
     }
 
     private static String getStingKeyForWindow(Windowed<String> key) {

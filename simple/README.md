@@ -47,7 +47,7 @@ Kafka-Streams and Windowing
                 (start and end time greater then previous window boundaries) and calculates 
                 aggregation (from starting)
             * **Notes:**
-                1. changes will cause window's upper boundary (end time) to go up (adding to last window inactivityGap value)
+                1. changes will cause window's upper boundary (end time) to go up (adding to last window inactivityGap value, actually window.endTime equals to last message time, but in calculation kafka adds inactivityGap)
                 1. For some reason, receives additional event with same window boundaries, but with **null** value, so need to filter it (why?)
                 1. When we have same key and 2 windows: key:key1, time: s0 -> **key1, s0-s3** window created, receiving next message with 
                 the same key and at time s1, aggregates data with first window, but changes upper boundary **key1, s0-s5**. 
@@ -55,5 +55,10 @@ Kafka-Streams and Windowing
                 From this moment any message which arrives at time between s0 and s6 (exclusive) will be added to first window 
                 and increases its upper boundary (meaningless), but messages between s6 and s8 will be added into second window 
                 and increases its upper boundary 
-        ---------------------------------------------
-        **Conclusion:** _window based on event time is created but never closed, so every late arrival will be added to existed window calculation/aggregation_
+            ---------------------------------------------
+            **Conclusion:** _window based on event time is created but never closed, so every late arrival will be added to existed window calculation/aggregation_
+        2. With *until* parameter (window maintained only until *until* parameter value)
+            *
+            ---------------------------------------------
+            **Conclusion:** Same as previous, but records coming after window expired (defined by **until** value), 
+            opens new window, even if it fits previously existed window boundaries. 
