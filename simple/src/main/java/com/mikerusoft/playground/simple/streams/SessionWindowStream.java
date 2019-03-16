@@ -19,6 +19,8 @@ import java.util.Date;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
+
 @Slf4j
 @Component("session")
 public class SessionWindowStream implements WindowStream {
@@ -56,7 +58,7 @@ public class SessionWindowStream implements WindowStream {
                 value
             ))
                 .map((key, value) -> new KeyValue<>(getStingKeyForWindow(key), value))
-                .to("window-stream-1-result", Produced.with(Serdes.String(), new JSONSerde<>(Counter.class)));
+                .to("window-stream-1-result", createProduced(Counter.class));
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
 

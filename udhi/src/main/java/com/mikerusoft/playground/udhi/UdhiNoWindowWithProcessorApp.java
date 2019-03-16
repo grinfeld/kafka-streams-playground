@@ -14,7 +14,6 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Materialized;
-import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.PunctuationType;
@@ -32,6 +31,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
 
 @SpringBootApplication
 @Slf4j
@@ -59,14 +60,14 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
             .groupByKey()
             .aggregate(
                 GroupMessage::new,
-                (key, message, group) -> addMessageToGroup(message, group),
+                (key, message, group) -> Utils.addMessageToGroup(message, group),
                 defineAggregateStore(supplier)
             )
             .filter( (key, group) -> group.ready())
             .toStream()
             .filter((key,group) -> group != null)
             .map( (key, group) -> new KeyValue<>(key, group.convert()))
-            .to("ready-messages", Produced.with(Serdes.String(), new JSONSerde<>(ReadyMessage.class)));
+            .to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
 
@@ -83,12 +84,6 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
         KafkaStreams kafkaStreams = new KafkaStreams(topology, config);
 
         KafkaStreamUtils.runStream(kafkaStreams);
-    }
-
-    private static GroupMessage addMessageToGroup(UdhiMessage v, GroupMessage a) {
-        if (a.getSize() == 0) { a.setSize(v.getSize());}
-        a.add(v);
-        return a;
     }
 
     private static Materialized<String, GroupMessage, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {

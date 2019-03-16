@@ -21,6 +21,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.util.Properties;
 import java.util.UUID;
 
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.materialized;
+
 @SpringBootApplication
 @Slf4j
 public class UdhiNoWindowApp implements CommandLineRunner {
@@ -42,13 +45,14 @@ public class UdhiNoWindowApp implements CommandLineRunner {
                 .groupByKey()
                 .aggregate(
                     GroupMessage::new,
-                    (k, v, a) -> {if (a.getSize() == 0) { a.setSize(v.getSize());} a.add(v); return a;},
-                    Materialized.with(Serdes.String(), new JSONSerde<>(GroupMessage.class)))
+                    (k, v, a) -> Utils.addMessageToGroup(v, a),
+                    materialized(GroupMessage.class)
+                )
                 .filter( (k, v) -> v.ready())
                 .toStream()
                 .filter((k,v) -> v != null)
                 .map( (k, v) -> new KeyValue<>(k, v.convert()))
-                .to("ready-messages", Produced.with(Serdes.String(), new JSONSerde<>(ReadyMessage.class)));
+                .to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());

@@ -2,11 +2,17 @@ package com.mikerusoft.playground.kafkastreamsinit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.processor.StateStore;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.WindowStore;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -63,4 +69,16 @@ public class KafkaStreamUtils {
         System.exit(0);
     }
 
+
+    public static <V> Produced<String, V> createProduced(Class<V> clazz) {
+        return Produced.with(Serdes.String(), new JSONSerde<>(clazz));
+    }
+
+    public static <V> Materialized<String, V, KeyValueStore<Bytes, byte[]>> materialized(Class<V> clazz) {
+        return Materialized.with(Serdes.String(), new JSONSerde<>(clazz));
+    }
+
+    public static <V> Materialized<String, V, WindowStore<Bytes, byte[]>> materializedWindow(Class<V> clazz) {
+        return Materialized.with(Serdes.String(), new JSONSerde<>(clazz));
+    }
 }

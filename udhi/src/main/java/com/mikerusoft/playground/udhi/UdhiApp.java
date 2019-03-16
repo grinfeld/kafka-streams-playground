@@ -21,6 +21,9 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
+import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.materializedWindow;
+
 @SpringBootApplication
 @Slf4j
 public class UdhiApp implements CommandLineRunner {
@@ -49,7 +52,7 @@ public class UdhiApp implements CommandLineRunner {
                 .mapValues(m -> ReadyMessage.builder().fullMessage(true).id(m.getId())
                         .text(m.getText())
                         .providerId(m.getProviderId()).build())
-                .to("ready-messages", Produced.with(Serdes.String(), new JSONSerde<>(ReadyMessage.class)));
+                .to("ready-messages", createProduced(ReadyMessage.class));
 
         KStream<String, UdhiMessage> udhiStream = branch[1];
         udhiStream
@@ -57,14 +60,14 @@ public class UdhiApp implements CommandLineRunner {
                 .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(10)))
                 .aggregate(
                     GroupMessage::new,
-                    (k, v, a) -> {if (a.getSize() == 0) { a.setSize(v.getSize());} a.add(v); return a;},
-                    Materialized.with(Serdes.String(), new JSONSerde<>(GroupMessage.class))
+                    (k, v, a) -> Utils.addMessageToGroup(v, a),
+                    materializedWindow(GroupMessage.class)
                 )
                 .filter( (k, v) -> v.ready())
                 .toStream()
                 .filter((w,v) -> v != null)
                 .map( (w, v) -> new KeyValue<>(w.key(), v.convert()))
-                .to("ready-messages", Produced.with(Serdes.String(), new JSONSerde<>(ReadyMessage.class)));
+                .to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
