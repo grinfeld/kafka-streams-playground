@@ -19,6 +19,15 @@ public class MessageMonitor {
     private String extMessageId;
     private long sentStatusTime;
     private String sentStatus;
+    @lombok.Builder.Default
+    private long currentTime = System.currentTimeMillis();
+
+    private int counter;
+
+    public MessageMonitor increaseCounter(int i) {
+        counter = counter + i;
+        return this;
+    }
 
     public MessageMonitor merge(MessageMonitor mergeWith) {
         Builder builder = this.toBuilder();
@@ -42,7 +51,6 @@ public class MessageMonitor {
             builder.sentTime(mergeWith.getSentTime());
         if (mergeWith.getReceivedTime() > 0)
             builder.receivedTime(mergeWith.getReceivedTime());
-
-        return builder.build();
+        return builder.build().increaseCounter(mergeWith.counter);
     }
 }
