@@ -9,14 +9,17 @@ import com.mikerusoft.playground.models.monitoring.ReceivedMessage;
 import com.mikerusoft.playground.models.monitoring.SentMessage;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.*;
+import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.Stores;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -38,30 +41,36 @@ public class MonitoringApp implements CommandLineRunner {
     @Value("${broker_url:localhost:9092}")
     private String url;
 
+
+
+    private static Materialized<String, MessageMonitor, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
+        return Materialized.<String, MessageMonitor>as(supplier)
+                .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(MessageMonitor.class)).withCachingDisabled();
+    }
+
     @Override
     public void run(String... args) throws Exception {
 
         final StreamsBuilder builder = new StreamsBuilder();
 
         Properties config = KafkaStreamUtils.streamProperties("monitoring-app", url, ReceivedMessage.class);
-
+        String receivedMessageStateStoreName = "receivedKtable";
         // creating KTable from received-messages
         KTable<String, MessageMonitor> msgMonitorKtable = builder.stream("received-messages",
                 Consumed.with(Serdes.String(), new JSONSerde<>(ReceivedMessage.class))
                 .withTimestampExtractor(new JsonTimestampExtractor<>(ReceivedMessage.class, ReceivedMessage::getReceivedTime))
             )
-            .peek((k,v) -> System.out.println(k))
             .groupByKey()
             // since there is no API to transform stream into KTable, let's do "reduce" instead to implements some redundant Processor
-            .reduce((v1, v2) -> v1)
+            .reduce((v1, v2) -> v1, Materialized.with(Serdes.String(), new JSONSerde<>(ReceivedMessage.class)))
             .mapValues(v -> MessageMonitor.builder()
                         .receivedTime(v.getReceivedTime())
                         .currentTime(System.currentTimeMillis())
                         .id(v.getId())
                     .build(),
-                Materialized.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class))
+                defineAggregateStore(Stores.persistentKeyValueStore(receivedMessageStateStoreName))
             );
-        String receivedMessageStateStoreName = msgMonitorKtable.queryableStoreName();
+
         // let's put stream into "message-monitoring" to recognize when message is received but never sent (and received DR)
         msgMonitorKtable.toStream()
             .to("message-monitoring", createProduced(MessageMonitor.class));
@@ -95,16 +104,20 @@ public class MonitoringApp implements CommandLineRunner {
             .build().increaseCounter(1)
         ).to("message-monitoring", Produced.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class)));
 
+
+        String aggrStoreName = "monitoring-aggr";
+
         // now let's to examine "message-monitoring" topic: 1. aggregate all received data and with help of
         // of processor, remove messages which are OK (received, sent and have DR)
         KTable<String, MessageMonitor> aggregate = builder.stream("message-monitoring",
             Consumed.with(Serdes.String(), new JSONSerde<>(MessageMonitor.class))
             .withTimestampExtractor(new JsonTimestampExtractor<>(MessageMonitor.class, MessageMonitor::getSentTime))
         ).groupByKey()
-        .aggregate(MessageMonitor::new, (k, v, a) -> a.merge(v))
-        ;
-
-        String storeName = aggregate.queryableStoreName();
+        .aggregate(
+            MessageMonitor::new,
+            (k, v, a) -> a.merge(v),
+            defineAggregateStore(Stores.persistentKeyValueStore(aggrStoreName))
+        );
 
         aggregate.toStream().process(new ProcessorSupplier<String, MessageMonitor>() {
             @Override
@@ -118,7 +131,7 @@ public class MonitoringApp implements CommandLineRunner {
                     @Override
                     public void init(ProcessorContext context) {
                         this.context = context;
-                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(storeName);
+                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
                         this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
                     }
 
@@ -138,11 +151,12 @@ public class MonitoringApp implements CommandLineRunner {
                     public void close() {}
                 };
             }
-        });
+        }, aggrStoreName, receivedMessageStateStoreName);
 
         Topology topology = builder.build();
 
-        topology = topology.addSource("source", ".*message-monitoring.*")
+        topology = topology
+        .addSource("source", ".*message-monitoring.*")
         // TODO: could I use only one processor
         .addProcessor("send-alert", new ProcessorSupplier<Object, Object>() {
             @Override
@@ -154,7 +168,7 @@ public class MonitoringApp implements CommandLineRunner {
 
                     @Override
                     public void init(ProcessorContext context) {
-                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(storeName);
+                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
                         this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
                         context.schedule(100L, PunctuationType.WALL_CLOCK_TIME, time -> {
                             long now = System.currentTimeMillis();
@@ -163,7 +177,7 @@ public class MonitoringApp implements CommandLineRunner {
                             while (all.hasNext()) {
                                 KeyValue<String, MessageMonitor> next = all.next();
                                 MessageMonitor messageMonitor = next.value;
-                                if (waitTooLong(now, messageMonitor.getCurrentTime())) {
+                                if (messageMonitor.getCounter() != 2 && waitTooLong(now, messageMonitor.getCurrentTime())) {
                                     // TODO: send alert
                                     alertsToBeSent.add(next);
                                 }
@@ -191,6 +205,7 @@ public class MonitoringApp implements CommandLineRunner {
                 };
             }
         }, "source")
+        .connectProcessorAndStateStores("send-alert", aggrStoreName)
         .addSink("alerts", "message-alerts",
                 new StringSerializer(), new JSONSerde<>(MessageMonitor.class), "send-alert");
         System.out.println("" + topology.describe());
