@@ -7,14 +7,14 @@ Kafka-Streams and Windowing
         * window is opened every 2 minutes. Actually, we don't have late arrival messages, so 
         messages entered inside 2 minute window
     1. With TimeExtractor (window size: 2 minutes) - **event time**
-        1. sending message with time extracted older then processing time
+        1. sending message with time extracted early then processing time
             * opened window with 2 minute boundary and calculates aggregation (from starting)
-        1. sending message with time extracted older then processing time and 
+        1. sending message with time extracted early then processing time and 
         inside the window boundaries, but at time (processing) less 
         then 2 minutes after window created
             * message inserted in the created window and 
             calculates aggregation (continues previous calculation)
-        1. sending message with time extracted older then processing time and 
+        1. sending message with time extracted early then processing time and 
         inside the window boundaries, but at time (processing) greater then 
         2 minutes after window created
             * message inserted in the created window and calculates aggregation 
@@ -29,15 +29,15 @@ Kafka-Streams and Windowing
     1. With TimeExtractor (window size: 2 minutes between opening new window) **process time**
         1. No **until** parameter (means, session window won't be re-opened - every new event 
                 with current starting boundaries added to this window)
-            1. sending message with time extracted older then processing time
+            1. sending message with time extracted early then processing time
                 * opened window with 2 minute boundary and calculates aggregation 
                 (from starting)
-            1. sending message with time extracted older then processing time and 
+            1. sending message with time extracted early then processing time and 
             inside the window boundaries, but at time (processing) less then 2 minutes 
             after window created
                 * message inserted in the created window with event time as start and end time +2 minutes
                  and calculates aggregation (continues previous calculation)
-            1. sending message with time extracted older then processing time and 
+            1. sending message with time extracted early then processing time and 
                 inside the window boundaries, but at time (processing) greater then 2 minutes 
                 after window created
                 * message inserted in the created window and calculates aggregation 

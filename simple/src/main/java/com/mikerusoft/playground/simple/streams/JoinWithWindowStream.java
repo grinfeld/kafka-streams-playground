@@ -23,20 +23,20 @@ public class JoinWithWindowStream implements WindowStream {
         final StreamsBuilder builder = new StreamsBuilder();
 
         KStream<String, MyObject> stream1 =
-                builder.stream("join-with-window-stream-1",
-                        Consumed.with(
-                                Serdes.String(),
-                                new JSONSerde<>(MyObject.class)
-                        ).withTimestampExtractor(new JsonTimestampExtractor<>(MyObject.class, MyObject::getTimestamp))
-                );
+            builder.stream("join-with-window-stream-1",
+                Consumed.with(
+                    Serdes.String(),
+                    new JSONSerde<>(MyObject.class)
+                ).withTimestampExtractor(new JsonTimestampExtractor<>(MyObject.class, MyObject::getTimestamp))
+            );
 
         KStream<String, MyObject> stream2 =
-                builder.stream("join-with-window-stream-2",
-                        Consumed.with(
-                                Serdes.String(),
-                                new JSONSerde<>(MyObject.class)
-                        ).withTimestampExtractor(new JsonTimestampExtractor<>(MyObject.class, MyObject::getTimestamp))
-                );
+            builder.stream("join-with-window-stream-2",
+                Consumed.with(
+                    Serdes.String(),
+                    new JSONSerde<>(MyObject.class)
+                ).withTimestampExtractor(new JsonTimestampExtractor<>(MyObject.class, MyObject::getTimestamp))
+            );
 
         stream1.join(stream2, MyObject::mergeWith, JoinWindows.of(TimeUnit.SECONDS.toMillis(60L)))
         .to("join-result", createProduced(MyObject.class));

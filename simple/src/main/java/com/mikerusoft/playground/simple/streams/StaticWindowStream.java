@@ -57,6 +57,9 @@ public class StaticWindowStream implements WindowStream {
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
 
+
+
+
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
     }
 
