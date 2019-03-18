@@ -51,6 +51,8 @@ public class MessageMonitor {
             builder.sentTime(mergeWith.getSentTime());
         if (mergeWith.getReceivedTime() > 0)
             builder.receivedTime(mergeWith.getReceivedTime());
-        return builder.build().increaseCounter(mergeWith.counter);
+        MessageMonitor messageMonitor = builder.build().increaseCounter(mergeWith.counter);
+
+        return messageMonitor;
     }
 }

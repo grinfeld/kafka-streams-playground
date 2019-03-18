@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
 
@@ -153,10 +154,12 @@ public class MonitoringApp implements CommandLineRunner {
             }
         }, aggrStoreName, receivedMessageStateStoreName);
 
+        aggregate.toStream().to("monitoring-aggr", createProduced(MessageMonitor.class));
+
         Topology topology = builder.build();
 
         topology = topology
-        .addSource("source", ".*message-monitoring.*")
+        .addSource("source", Pattern.compile(".*monitoring\\-aggr.*"))
         // TODO: could I use only one processor
         .addProcessor("send-alert", new ProcessorSupplier<Object, Object>() {
             @Override
@@ -205,7 +208,7 @@ public class MonitoringApp implements CommandLineRunner {
                 };
             }
         }, "source")
-        .connectProcessorAndStateStores("send-alert", aggrStoreName)
+        .connectProcessorAndStateStores("send-alert", aggrStoreName, receivedMessageStateStoreName)
         .addSink("alerts", "message-alerts",
                 new StringSerializer(), new JSONSerde<>(MessageMonitor.class), "send-alert");
         System.out.println("" + topology.describe());
