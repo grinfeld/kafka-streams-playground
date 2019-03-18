@@ -123,34 +123,7 @@ public class MonitoringApp implements CommandLineRunner {
         aggregate.toStream().process(new ProcessorSupplier<String, MessageMonitor>() {
             @Override
             public Processor<String, MessageMonitor> get() {
-                return new Processor<String, MessageMonitor>() {
-
-                    private KeyValueStore<String, MessageMonitor> monitorStore;
-                    private KeyValueStore<String, MessageMonitor> receivedStore;
-                    private ProcessorContext context;
-
-                    @Override
-                    public void init(ProcessorContext context) {
-                        this.context = context;
-                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
-                        this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
-                    }
-
-                    @Override
-                    public void process(String key, MessageMonitor value) {
-                        // we should reach this processor after aggregation
-                        if (value.getCounter() == 2) { // means we both sent message and received DR
-                            // so let's delete it
-                            this.monitorStore.delete(key);
-                            this.receivedStore.delete(key);
-                            // TODO: do I need to store context and perform "commit" ?
-                            this.context.commit();
-                        }
-                    }
-
-                    @Override
-                    public void close() {}
-                };
+                return getAggrProcessor(aggrStoreName, receivedMessageStateStoreName);
             }
         }, aggrStoreName, receivedMessageStateStoreName);
 
@@ -164,48 +137,7 @@ public class MonitoringApp implements CommandLineRunner {
         .addProcessor("send-alert", new ProcessorSupplier<Object, Object>() {
             @Override
             public Processor<Object, Object> get() {
-                return new Processor<Object, Object>() {
-
-                    private KeyValueStore<String, MessageMonitor> monitorStore;
-                    private KeyValueStore<String, MessageMonitor> receivedStore;
-
-                    @Override
-                    public void init(ProcessorContext context) {
-                        this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
-                        this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
-                        context.schedule(100L, PunctuationType.WALL_CLOCK_TIME, time -> {
-                            long now = System.currentTimeMillis();
-                            KeyValueIterator<String, MessageMonitor> all = this.monitorStore.all();
-                            List<KeyValue<String, MessageMonitor>> alertsToBeSent = new ArrayList<>();
-                            while (all.hasNext()) {
-                                KeyValue<String, MessageMonitor> next = all.next();
-                                MessageMonitor messageMonitor = next.value;
-                                if (messageMonitor.getCounter() != 2 && waitTooLong(now, messageMonitor.getCurrentTime())) {
-                                    // TODO: send alert
-                                    alertsToBeSent.add(next);
-                                }
-                            }
-                            alertsToBeSent.forEach(pair -> {
-                                // forwards request to sink -> topic "message-alerts"
-                                context.forward(pair.key, pair.value, To.child("alerts"));
-                                // since alert has been sent, let's delete from key/value stores
-                                this.monitorStore.delete(pair.key);
-                                this.receivedStore.delete(pair.key);
-                            });
-                            context.commit();
-                        });
-                    }
-
-                    private boolean waitTooLong(long now, long receivedAt) {
-                        return receivedAt + TimeUnit.SECONDS.toMillis(120L) < now;
-                    }
-
-                    @Override
-                    public void process(Object key, Object value) {}
-
-                    @Override
-                    public void close() {}
-                };
+                return getObjectObjectProcessor(aggrStoreName, receivedMessageStateStoreName);
             }
         }, "source")
         .connectProcessorAndStateStores("send-alert", aggrStoreName, receivedMessageStateStoreName)
@@ -214,5 +146,81 @@ public class MonitoringApp implements CommandLineRunner {
         System.out.println("" + topology.describe());
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
+    }
+
+    private static Processor<String, MessageMonitor> getAggrProcessor(String aggrStoreName, String receivedMessageStateStoreName) {
+        return new Processor<String, MessageMonitor>() {
+
+            private KeyValueStore<String, MessageMonitor> monitorStore;
+            private KeyValueStore<String, MessageMonitor> receivedStore;
+            private ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+                this.context = context;
+                this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
+                this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
+            }
+
+            @Override
+            public void process(String key, MessageMonitor value) {
+                // we should reach this processor after aggregation
+                if (value.getCounter() == 2) { // means we both sent message and received DR
+                    // so let's delete it
+                    this.monitorStore.delete(key);
+                    this.receivedStore.delete(key);
+                    // TODO: do I need to store context and perform "commit" ?
+                    this.context.commit();
+                }
+            }
+
+            @Override
+            public void close() {}
+        };
+    }
+
+    private static Processor<Object, Object> getObjectObjectProcessor(String aggrStoreName, String receivedMessageStateStoreName) {
+        return new Processor<Object, Object>() {
+
+            private KeyValueStore<String, MessageMonitor> monitorStore;
+            private KeyValueStore<String, MessageMonitor> receivedStore;
+
+            @Override
+            public void init(ProcessorContext context) {
+                this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
+                this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
+                context.schedule(100L, PunctuationType.WALL_CLOCK_TIME, time -> {
+                    long now = System.currentTimeMillis();
+                    KeyValueIterator<String, MessageMonitor> all = this.monitorStore.all();
+                    List<KeyValue<String, MessageMonitor>> alertsToBeSent = new ArrayList<>();
+                    while (all.hasNext()) {
+                        KeyValue<String, MessageMonitor> next = all.next();
+                        MessageMonitor messageMonitor = next.value;
+                        if (messageMonitor.getCounter() != 2 && waitTooLong(now, messageMonitor.getCurrentTime())) {
+                            // TODO: send alert
+                            alertsToBeSent.add(next);
+                        }
+                    }
+                    alertsToBeSent.forEach(pair -> {
+                        // forwards request to sink -> topic "message-alerts"
+                        context.forward(pair.key, pair.value, To.child("alerts"));
+                        // since alert has been sent, let's delete from key/value stores
+                        this.monitorStore.delete(pair.key);
+                        this.receivedStore.delete(pair.key);
+                    });
+                    context.commit();
+                });
+            }
+
+            private boolean waitTooLong(long now, long receivedAt) {
+                return receivedAt + TimeUnit.SECONDS.toMillis(120L) < now;
+            }
+
+            @Override
+            public void process(Object key, Object value) {}
+
+            @Override
+            public void close() {}
+        };
     }
 }
