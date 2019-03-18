@@ -28,6 +28,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -42,19 +43,12 @@ public class MonitoringApp implements CommandLineRunner {
     @Value("${broker_url:localhost:9092}")
     private String url;
 
-
-
-    private static Materialized<String, MessageMonitor, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
-        return Materialized.<String, MessageMonitor>as(supplier)
-                .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(MessageMonitor.class)).withCachingDisabled();
-    }
-
     @Override
     public void run(String... args) throws Exception {
 
         final StreamsBuilder builder = new StreamsBuilder();
 
-        Properties config = KafkaStreamUtils.streamProperties("monitoring-app", url, ReceivedMessage.class);
+        Properties config = KafkaStreamUtils.streamProperties("monitoring-app" + UUID.randomUUID().toString(), url, ReceivedMessage.class);
         String receivedMessageStateStoreName = "receivedKtable";
         // creating KTable from received-messages
         KTable<String, MessageMonitor> msgMonitorKtable = builder.stream("received-messages",
@@ -120,12 +114,9 @@ public class MonitoringApp implements CommandLineRunner {
             defineAggregateStore(Stores.persistentKeyValueStore(aggrStoreName))
         );
 
-        aggregate.toStream().process(new ProcessorSupplier<String, MessageMonitor>() {
-            @Override
-            public Processor<String, MessageMonitor> get() {
-                return getAggrProcessor(aggrStoreName, receivedMessageStateStoreName);
-            }
-        }, aggrStoreName, receivedMessageStateStoreName);
+        aggregate.toStream().process(() ->
+                getAggrProcessor(aggrStoreName, receivedMessageStateStoreName),
+            aggrStoreName, receivedMessageStateStoreName);
 
         aggregate.toStream().to("monitoring-aggr", createProduced(MessageMonitor.class));
 
@@ -134,12 +125,10 @@ public class MonitoringApp implements CommandLineRunner {
         topology = topology
         .addSource("source", Pattern.compile(".*monitoring\\-aggr.*"))
         // TODO: could I use only one processor
-        .addProcessor("send-alert", new ProcessorSupplier<Object, Object>() {
-            @Override
-            public Processor<Object, Object> get() {
-                return getObjectObjectProcessor(aggrStoreName, receivedMessageStateStoreName);
-            }
-        }, "source")
+        .addProcessor("send-alert", (ProcessorSupplier<Object, Object>) () ->
+                getObjectObjectProcessor(aggrStoreName, receivedMessageStateStoreName),
+                "source"
+        )
         .connectProcessorAndStateStores("send-alert", aggrStoreName, receivedMessageStateStoreName)
         .addSink("alerts", "message-alerts",
                 new StringSerializer(), new JSONSerde<>(MessageMonitor.class), "send-alert");
@@ -169,7 +158,6 @@ public class MonitoringApp implements CommandLineRunner {
                     // so let's delete it
                     this.monitorStore.delete(key);
                     this.receivedStore.delete(key);
-                    // TODO: do I need to store context and perform "commit" ?
                     this.context.commit();
                 }
             }
@@ -222,5 +210,10 @@ public class MonitoringApp implements CommandLineRunner {
             @Override
             public void close() {}
         };
+    }
+
+    private static Materialized<String, MessageMonitor, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
+        return Materialized.<String, MessageMonitor>as(supplier)
+                .withKeySerde(Serdes.String()).withValueSerde(new JSONSerde<>(MessageMonitor.class)).withCachingDisabled();
     }
 }
