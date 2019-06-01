@@ -17,7 +17,7 @@ public class GeneratorApp implements CommandLineRunner {
     @Autowired
     private ApplicationContext context;
 
-    @Value("${app.name:monitor}") // "udhi"
+    @Value("${app.name:counter_ex}") // "udhi", "monitor"
     private String appName;
 
     @Override

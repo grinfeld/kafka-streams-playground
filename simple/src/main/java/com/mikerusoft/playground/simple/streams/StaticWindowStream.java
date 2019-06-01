@@ -23,7 +23,7 @@ import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.create
 
 @Slf4j
 @Component("static")
-public class StaticWindowStream implements WindowStream {
+public class StaticWindowStream implements Streamable {
 
     @Value("${windowDurationSec:120}")
     private int windowDurationSec;
@@ -56,9 +56,6 @@ public class StaticWindowStream implements WindowStream {
                 .to("window-stream-1-result", createProduced(Counter.class));
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
-
-
-
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
     }

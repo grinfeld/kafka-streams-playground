@@ -1,5 +1,5 @@
 package com.mikerusoft.playground.simple.streams;
 
-public interface WindowStream {
+public interface Streamable {
     void runStream(String url);
 }

@@ -1,6 +1,6 @@
 package com.mikerusoft.playground.simple;
 
-import com.mikerusoft.playground.simple.streams.WindowStream;
+import com.mikerusoft.playground.simple.streams.Streamable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -15,11 +15,11 @@ public class SimpleApp implements CommandLineRunner {
     }
 
     @Value("${broker_url:localhost:9092}") private String url;
-    @Value("${streamName:session}") private String streamName;
+    @Value("${streamName:counter-app}") private String streamName;
     @Autowired private ApplicationContext context;
 
     @Override
     public void run(String... args) throws Exception {
-        context.getBean(streamName, WindowStream.class).runStream(url);
+        context.getBean(streamName, Streamable.class).runStream(url);
     }
 }

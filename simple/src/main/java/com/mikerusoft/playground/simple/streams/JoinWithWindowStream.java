@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.createProduced;
 
-public class JoinWithWindowStream implements WindowStream {
+public class JoinWithWindowStream implements Streamable {
     @Override
     public void runStream(String url) {
         Properties config = KafkaStreamUtils.streamProperties("join-with-window-stream", url, MyObject.class);

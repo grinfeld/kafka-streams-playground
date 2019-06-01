@@ -23,7 +23,7 @@ import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.create
 
 @Slf4j
 @Component("session")
-public class SessionWindowStream implements WindowStream {
+public class SessionWindowStream implements Streamable {
 
     @Value("${expireAtSec:240}")
     private int expireAtSec;
