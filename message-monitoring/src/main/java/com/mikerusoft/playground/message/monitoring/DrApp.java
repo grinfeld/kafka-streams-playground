@@ -73,7 +73,7 @@ public class DrApp implements CommandLineRunner {
             .peek((key, status) -> {
                 log.info("received final status for {}", status);
             })
-            .to("final-status", Produced.with(Serdes.String(), new JSONSerde<>(MessageStatus.class)));
+        .to("final-status", Produced.with(Serdes.String(), new JSONSerde<>(MessageStatus.class)));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
