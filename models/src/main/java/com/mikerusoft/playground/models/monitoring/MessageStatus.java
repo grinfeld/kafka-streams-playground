@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(builderClassName = "Builder", toBuilder = true)
-public class MessageStatus {
+public class MessageStatus implements MessageForStatus {
     private String id;
     private String providerId;
     private String from;
