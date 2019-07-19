@@ -1,7 +1,7 @@
 package com.mikerusoft.playground.udhi;
 
-import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils;
+import com.mikerusoft.playground.kafkastreamsinit.SingleFieldSerdeForSerializer;
 import com.mikerusoft.playground.models.udhi.GroupMessage;
 import com.mikerusoft.playground.models.udhi.ReadyMessage;
 import com.mikerusoft.playground.models.udhi.UdhiMessage;
@@ -67,6 +67,8 @@ public class UdhiApp implements CommandLineRunner {
                 .toStream()
                 .filter((w,v) -> v != null)
                 .map( (w, v) -> new KeyValue<>(w.key(), v.convert()))
+                .through("temp-topic-for-time",
+                    Produced.valueSerde(new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime)))
                 .to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();

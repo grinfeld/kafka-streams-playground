@@ -3,6 +3,7 @@ package com.mikerusoft.playground.simple.streams;
 import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import com.mikerusoft.playground.kafkastreamsinit.JsonTimestampExtractor;
 import com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils;
+import com.mikerusoft.playground.kafkastreamsinit.SingleFieldSerdeForSerializer;
 import com.mikerusoft.playground.models.simple.Counter;
 import com.mikerusoft.playground.models.simple.MyObject;
 import lombok.extern.slf4j.Slf4j;
@@ -52,8 +53,10 @@ public class StaticWindowStream implements Streamable {
                 key.key(),
                 value
             ))
-                .map((key, value) -> new KeyValue<>(getStingKeyForWindow(key), value))
-                .to("window-stream-1-result", createProduced(Counter.class));
+            .map((key, value) -> new KeyValue<>(getStingKeyForWindow(key), value))
+            .through("temp-topic-for-time",
+                Produced.valueSerde(new SingleFieldSerdeForSerializer<>(Serdes.Integer().serializer(), Counter::hashCode)))
+            .to("window-stream-1-result", createProduced(Counter.class));
         Topology topology = builder.build();
         System.out.println("" + topology.describe());
 
