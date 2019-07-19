@@ -51,8 +51,9 @@ public class UdhiNoWindowApp implements CommandLineRunner {
                 .filter((k,v) -> v != null)
                 .mapValues(GroupMessage::convert)
                 .through("temp-topic-for-time",
-                    Produced.valueSerde(new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime)))
-                .to("ready-messages", createProduced(ReadyMessage.class));
+                    Produced.with(Serdes.String(),
+                    new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime))
+                ).to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());

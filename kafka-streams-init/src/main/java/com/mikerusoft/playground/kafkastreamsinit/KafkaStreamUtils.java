@@ -15,6 +15,7 @@ import org.apache.kafka.streams.state.WindowStore;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 
 public class KafkaStreamUtils {
 
@@ -62,6 +63,29 @@ public class KafkaStreamUtils {
             stream.cleanUp(); // not for production :)
         } catch (final Throwable e) {
             stream.cleanUp(); // not for production :)
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        System.exit(0);
+    }
+
+    public static void runStream(final KafkaStreams...streams) {
+        final CountDownLatch latch = new CountDownLatch(1);
+        Runtime.getRuntime().addShutdownHook(new Thread("stream-pipe-shutdown-hook") {
+            @Override
+            public void run() {
+                Stream.of(streams).forEach(s -> { try { s.close(); } catch (Exception ignore){}});
+                latch.countDown();
+            }
+        });
+
+        try {
+            Stream.of(streams).forEach(s -> { try { s.start(); } catch (Exception ignore){}});
+            latch.await();
+            Stream.of(streams).forEach(s -> { try { s.cleanUp(); } catch (Exception ignore){}}); // not for production :)
+        } catch (final Throwable e) {
+            Stream.of(streams).forEach(s -> { try { s.cleanUp(); } catch (Exception ignore){}}); // not for production :)
             e.printStackTrace();
             System.exit(1);
         }

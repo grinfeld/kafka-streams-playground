@@ -68,8 +68,9 @@ public class UdhiApp implements CommandLineRunner {
                 .filter((w,v) -> v != null)
                 .map( (w, v) -> new KeyValue<>(w.key(), v.convert()))
                 .through("temp-topic-for-time",
-                    Produced.valueSerde(new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime)))
-                .to("ready-messages", createProduced(ReadyMessage.class));
+                    Produced.with(Serdes.String(),
+                    new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime))
+                ).to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
         System.out.println("" + topology.describe());

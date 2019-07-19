@@ -9,11 +9,13 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 import java.util.Collections;
 import java.util.Random;
 
+@Component("myObject")
 public class MyObjectGenerator implements Generator {
 
     @Value("${broker_url:localhost:9092}")

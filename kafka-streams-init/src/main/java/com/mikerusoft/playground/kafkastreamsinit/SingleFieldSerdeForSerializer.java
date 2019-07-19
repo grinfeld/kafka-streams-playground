@@ -41,6 +41,17 @@ public class SingleFieldSerdeForSerializer<F, T> implements Serde<F> {
 
     @Override
     public Deserializer<F> deserializer() {
-        throw new IllegalArgumentException("Deserialization not supported");
+        return new Deserializer<F>() {
+            @Override
+            public void configure(Map<String, ?> configs, boolean isKey) {}
+
+            @Override
+            public F deserialize(String topic, byte[] data) {
+                throw new IllegalArgumentException("Deserialization is not supported");
+            }
+
+            @Override
+            public void close() {}
+        };
     }
 }
