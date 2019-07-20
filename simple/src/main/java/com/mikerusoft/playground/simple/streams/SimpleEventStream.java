@@ -38,7 +38,7 @@ public class SimpleEventStream implements Streamable {
             .peek( (k,ev) -> System.out.println(k + " -> " + ev))
             .through("events-stream-time", Produced.with(Serdes.String(),
                 new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), Event::getTimestamp))
-            ).to("events-result-stream", Produced.with(Serdes.String(), new JSONSerde<>(Event.class)));
+            );
 
         Topology topology1 = builder1.build();
         System.out.println("" + topology1.describe());
