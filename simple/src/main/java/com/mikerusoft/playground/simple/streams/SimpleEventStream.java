@@ -9,10 +9,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
-import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.*;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -24,68 +21,53 @@ import java.util.UUID;
 @Component("events-thorough")
 public class SimpleEventStream implements Streamable {
 
-    private static Materialized<String, Long, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
-        return Materialized.<String, Long>as(supplier)
+    private static Materialized<String, Long, KeyValueStore<Bytes, byte[]>> defineAggregateStore(String supplier) {
+        return Materialized.<String, Long, KeyValueStore<Bytes, byte[]>>as(supplier)
                 .withKeySerde(Serdes.String()).withValueSerde(Serdes.Long()).withCachingDisabled();
     }
 
     @Override
     public void runStream(String url) {
-
         Properties timeStoreConfig = KafkaStreamUtils.streamProperties("events-stream-for-time" + UUID.randomUUID().toString(), url, Event.class);
         final StreamsBuilder timeStoreBuilder = new StreamsBuilder();
-        KeyValueBytesStoreSupplier supplier = Stores.persistentKeyValueStore("events-stream-time-store");
         KTable<String, Long> ktable = timeStoreBuilder
                 .stream("events-stream", Consumed.with(Serdes.String(), new JSONSerde<>(Event.class)))
                 .mapValues(Event::getTimestamp)
-                .groupByKey().aggregate(() -> 0L, (key, value, aggregate) -> value < aggregate ? aggregate : value,
-                    defineAggregateStore(supplier)
+                .groupByKey()
+                .aggregate(() -> 0L, (key, value, aggregate) -> value < aggregate ? aggregate : value,
+                    defineAggregateStore("events-stream-time-store")
                 );
         String timeStoreName = ktable.queryableStoreName();
 
         Topology timeStoreTopology = timeStoreBuilder.build();
         System.out.println("" + timeStoreTopology.describe());
+        KafkaStreams timeStream = new KafkaStreams(timeStoreTopology, timeStoreConfig);
         KafkaStreamUtils.runStream(
-            new KafkaStreams(timeStoreTopology, timeStoreConfig)
+            timeStream
         );
+
+        ReadOnlyKeyValueStore<String, Long> eventTimeStore =
+                timeStream.store(timeStoreName, QueryableStoreTypes.keyValueStore());
 
         Properties mainStreamConfig = KafkaStreamUtils.streamProperties("events-stream-main" + UUID.randomUUID().toString(), url, Event.class);
         final StreamsBuilder mainStreamBuilder = new StreamsBuilder();
         mainStreamBuilder.stream("events-stream", Consumed.with(Serdes.String(), new JSONSerde<>(Event.class)))
             .peek((k, ev) -> System.out.println(k + " -> " + ev))
-            .transformValues(new ValueTransformerWithKeySupplier<String, Event, Event>() {
+            .mapValues(new ValueMapperWithKey<String, Event, Event>() {
                 @Override
-                public ValueTransformerWithKey<String, Event, Event> get() {
-                    return new ValueTransformerWithKey<String, Event, Event>() {
-                        private KeyValueStore<String, Long> state;
+                public Event apply(String key, Event value) {
+                    if (eventTimeStore == null)
+                        return value;
+                    Long timeInStore = eventTimeStore.get(key);
+                    if (timeInStore == null)
+                        return value;
 
-                        @Override
-                        public void init(ProcessorContext context) {
-                            state = (KeyValueStore<String, Long>)context.getStateStore(timeStoreName);
-                        }
+                    if (value.getTimestamp() > timeInStore)
+                        return value;
 
-                        @Override
-                        public Event transform(String key, Event value) {
-                            if (state == null)
-                                return value;
-                            Long timeInStore = state.get(key);
-                            if (timeInStore == null)
-                                return value;
-
-                            if (value.getTimestamp() > timeInStore)
-                                return value;
-
-                            return value.toBuilder().timestamp(timeInStore).build();
-                        }
-
-                        @Override
-                        public void close() {}
-                    };
+                    return value.toBuilder().timestamp(timeInStore).build();
                 }
-            }, new String[]{timeStoreName})
-            .leftJoin(ktable, (value1, value2) -> value2 == null || value1.getTimestamp() <= value2 ?
-                    value1 : value1.toBuilder().timestamp(value2).build())
-            .filter((k, e) -> e != null)
+            })
             .to("events-after-join", Produced.with(Serdes.String(), new JSONSerde<>(Event.class)));
 
         Topology mainStreamTopology = mainStreamBuilder.build();
