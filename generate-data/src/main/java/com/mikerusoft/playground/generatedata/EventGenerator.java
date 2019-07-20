@@ -33,7 +33,7 @@ public class EventGenerator implements Generator {
 
         DataGenerator.generateFlux(i -> (i + 1))
             .map(EventGenerator::generateEvent)
-            .buffer(3)
+            .buffer(5)
             .map(l -> {Collections.shuffle(l); return l;})
             .flatMap(Flux::fromIterable)
             .take(takeWhile)

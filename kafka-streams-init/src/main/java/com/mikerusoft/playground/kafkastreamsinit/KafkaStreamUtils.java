@@ -31,13 +31,13 @@ public class KafkaStreamUtils {
     public static <V> Properties streamProperties(String appId, String url, Class<V> valueClass) {
         Properties config = new Properties();
         config.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
+        config.put(StreamsConfig.CLIENT_ID_CONFIG, appId);
         config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, url);
 
         // setting default serialization, if we need it
-        /*config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String());
-        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JSONSerde.class);
+        config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JSONSerde.class.getName());
         config.put("JsonPOJOClass", valueClass);
-        */
         config.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
 
 
@@ -48,49 +48,26 @@ public class KafkaStreamUtils {
     }
 
     public static void runStream(final KafkaStreams stream) {
-        final CountDownLatch latch = new CountDownLatch(1);
-        Runtime.getRuntime().addShutdownHook(new Thread("stream-pipe-shutdown-hook") {
-            @Override
-            public void run() {
-                stream.close();
-                latch.countDown();
-            }
-        });
+        Runtime.getRuntime().addShutdownHook(new Thread(stream::close));
 
         try {
+            stream.cleanUp(); // not for production :)
             stream.start();
-            latch.await();
-            stream.cleanUp(); // not for production :)
         } catch (final Throwable e) {
-            stream.cleanUp(); // not for production :)
             e.printStackTrace();
-            System.exit(1);
         }
-
-        System.exit(0);
     }
 
     public static void runStream(final KafkaStreams...streams) {
-        final CountDownLatch latch = new CountDownLatch(1);
-        Runtime.getRuntime().addShutdownHook(new Thread("stream-pipe-shutdown-hook") {
-            @Override
-            public void run() {
-                Stream.of(streams).forEach(s -> { try { s.close(); } catch (Exception ignore){}});
-                latch.countDown();
-            }
-        });
+        Runtime.getRuntime()
+            .addShutdownHook(new Thread(() -> Stream.of(streams).forEach(s -> { try { s.close(); } catch (Exception ignore){}})));
 
         try {
+            Stream.of(streams).forEach(KafkaStreams::cleanUp); // not for production :)
             Stream.of(streams).forEach(s -> { try { s.start(); } catch (Exception ignore){}});
-            latch.await();
-            Stream.of(streams).forEach(s -> { try { s.cleanUp(); } catch (Exception ignore){}}); // not for production :)
         } catch (final Throwable e) {
-            Stream.of(streams).forEach(s -> { try { s.cleanUp(); } catch (Exception ignore){}}); // not for production :)
             e.printStackTrace();
-            System.exit(1);
         }
-
-        System.exit(0);
     }
 
 

@@ -1,5 +1,8 @@
 package com.mikerusoft.playground.kafkastreamsinit;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
@@ -7,15 +10,15 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.util.Map;
 import java.util.function.Function;
 
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(builderClassName = "Builder", toBuilder = true)
 public class SingleFieldSerdeForSerializer<F, T> implements Serde<F> {
 
     private Serializer<T> singleFieldSerializer;
+    private Deserializer<T> singleFieldDeSerializer;
     private Function<F, T> fieldExtractor;
-
-    public SingleFieldSerdeForSerializer(Serializer<T> singleFieldSerializer, Function<F, T> fieldExtractor) {
-        this.singleFieldSerializer = singleFieldSerializer;
-        this.fieldExtractor = fieldExtractor;
-    }
+    private Function<T, F> fieldSetter;
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {}
@@ -47,7 +50,7 @@ public class SingleFieldSerdeForSerializer<F, T> implements Serde<F> {
 
             @Override
             public F deserialize(String topic, byte[] data) {
-                throw new IllegalArgumentException("Deserialization is not supported");
+                return fieldSetter.apply(singleFieldDeSerializer.deserialize(topic, data));
             }
 
             @Override
