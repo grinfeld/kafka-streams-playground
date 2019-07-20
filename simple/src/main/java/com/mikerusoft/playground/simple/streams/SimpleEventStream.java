@@ -4,14 +4,15 @@ import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils;
 import com.mikerusoft.playground.kafkastreamsinit.SingleFieldSerdeForSerializer;
 import com.mikerusoft.playground.models.events.Event;
-import com.mikerusoft.playground.models.simple.MyObject;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.Stores;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -22,6 +23,12 @@ import java.util.UUID;
 
 @Component("events-thorough")
 public class SimpleEventStream implements Streamable {
+
+    private static Materialized<String, Long, KeyValueStore<Bytes, byte[]>> defineAggregateStore(KeyValueBytesStoreSupplier supplier) {
+        return Materialized.<String, Long>as(supplier)
+                .withKeySerde(Serdes.String()).withValueSerde(Serdes.Long()).withCachingDisabled();
+    }
+
     @Override
     public void runStream(String url) {
         Properties config1 = KafkaStreamUtils.streamProperties("events-stream-group1" + UUID.randomUUID().toString(), url, Event.class);
@@ -37,12 +44,15 @@ public class SimpleEventStream implements Streamable {
         System.out.println("" + topology1.describe());
 
         final StreamsBuilder builder2 = new StreamsBuilder();
+        KeyValueBytesStoreSupplier supplier = Stores.persistentKeyValueStore("events-stream-time-store");
+        KTable<String, Long> ktable = builder2.stream("events-stream-time", Consumed.with(Serdes.String(), Serdes.Long()))
+                .groupByKey().aggregate(() -> 0L, (key, value, aggregate) -> value < aggregate ? aggregate : value, defineAggregateStore(supplier));
 
-        KTable<String, Long> ktable = builder2.table("events-stream-time", Consumed.with(Serdes.String(), Serdes.Long()));
 
         builder2.stream("events-result-stream", Consumed.with(Serdes.String(), new JSONSerde<>(Event.class)))
             .peek((k,ev) -> System.out.println(ev))
-            .leftJoin(ktable, (value1, value2) -> value2 != null && value1.getTimestamp() > value2 ? value1 : null)
+            .leftJoin(ktable, (value1, value2) -> value2 == null || value1.getTimestamp() <= value2 ?
+                    value1 : value1.toBuilder().timestamp(value2).build())
             .filter((k, e) -> e != null)
             .to("events-after-join", Produced.with(Serdes.String(), new JSONSerde<>(Event.class)));
 
