@@ -2,7 +2,6 @@ package com.mikerusoft.playground.udhi;
 
 import com.mikerusoft.playground.kafkastreamsinit.JSONSerde;
 import com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils;
-import com.mikerusoft.playground.kafkastreamsinit.SingleFieldSerdeForSerializer;
 import com.mikerusoft.playground.models.udhi.GroupMessage;
 import com.mikerusoft.playground.models.udhi.ReadyMessage;
 import com.mikerusoft.playground.models.udhi.UdhiMessage;
@@ -14,7 +13,6 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Materialized;
-import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.PunctuationType;
@@ -68,10 +66,7 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
             .toStream()
             .filter((key,group) -> group != null)
             .mapValues(GroupMessage::convert)
-            .through("temp-topic-for-time",
-                Produced.with(Serdes.String(),
-                new SingleFieldSerdeForSerializer<>(Serdes.Long().serializer(), ReadyMessage::getSentTime))
-            ).to("ready-messages", createProduced(ReadyMessage.class));
+            .to("ready-messages", createProduced(ReadyMessage.class));
 
         Topology topology = builder.build();
 
