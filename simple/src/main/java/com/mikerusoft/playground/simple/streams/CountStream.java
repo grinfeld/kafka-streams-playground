@@ -27,6 +27,7 @@ public class CountStream implements Streamable {
                 .toStream()
                 .filter((k,v) -> v > 1)
                 .peek((k,v) -> log.info("produce value {} with key {}", v, k))
+                //.foreach((k,v) -> { /* write to DB, send Http and etc */})
                 .to("counter-topic-to", Produced.with(Serdes.String(), Serdes.Long()));
 
         Topology topology = builder.build();

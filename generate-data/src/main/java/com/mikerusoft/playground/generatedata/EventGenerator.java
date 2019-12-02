@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.Random;
 
 @Component("events")
 public class EventGenerator implements Generator {
@@ -55,6 +56,10 @@ public class EventGenerator implements Generator {
         tsStr = tsStr.substring(tsStr.length() - 3);
         Date now = new Date(timestamp);
         return Event.builder().id("key" + i).data("Data: " + now.toString() + ", " + tsStr)
+            .type(types[random.nextInt() % types.length])
             .timestamp(timestamp).build();
     }
+
+    private static Random random = new Random();
+    private static String[] types = new String[] {"pageView", "addCart", "Purchase"};
 }

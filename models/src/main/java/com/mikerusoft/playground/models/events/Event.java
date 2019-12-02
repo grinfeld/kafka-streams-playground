@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class Event {
     private String id; // sectionId
     private long timestamp;
+    private String type;
     private String data;
 }

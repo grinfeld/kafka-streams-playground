@@ -15,7 +15,7 @@ public class SimpleApp implements CommandLineRunner {
     }
 
     @Value("${broker_url:localhost:9092}") private String url;
-    @Value("${streamName:events-thorough}") private String streamName;
+    @Value("${streamName:ktable-stream}") private String streamName;
     @Autowired private ApplicationContext context;
 
     @Override
