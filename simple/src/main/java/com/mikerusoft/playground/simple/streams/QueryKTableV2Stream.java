@@ -7,39 +7,42 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Component("ktable-stream2")
 public class QueryKTableV2Stream implements Streamable {
 
     @Override
     public void runStream(String url) {
 
-        Properties config = KafkaStreamUtils.streamProperties("ktable-stream-ex", url, Event.class);
+        Properties config = KafkaStreamUtils.streamProperties("ktable-stream-ex" + UUID.randomUUID().toString(), url, Event.class);
 
         final StreamsBuilder builder = new StreamsBuilder();
         // let's assume <SectionId, Event>
         KStream<String, Event> eventStream = builder.stream("events-stream", Consumed.with(Serdes.String(), new JSONSerde<>(Event.class)));
 
-        KTable<String, Long> sectionToPvc = builder.table("events-stream", Consumed.with(Serdes.String(), new JSONSerde<>(Event.class)))
+        KTable<String, Long> sectionToPvc = eventStream.groupByKey().reduce((value1, value2) -> value2)
                 .filter((id, event) -> event.getType().equals("pageView")).mapValues(Event::getTimestamp);
 
-        eventStream.join(sectionToPvc, Tuple::of)
+        eventStream.leftJoin(sectionToPvc, Tuple::of)
+                .peek((key, event) -> log.info("" + event))
                 .filter((key, tuple) -> tuple.getEvent() != null)
-                .filter((key, tuple) -> tuple.getTime() == null || tuple.getEvent().getTimestamp() > tuple.getTime())
+                .filter((key, tuple) -> tuple.getTime() == null || tuple.getEvent().getTimestamp() >= tuple.getTime() + TimeUnit.SECONDS.toMillis(2))
                 .mapValues(tuple -> tuple.getEvent())
+                .peek((key, event) -> log.info("" + event))
                 .to("events-for-only-active-sections")
         ;
 

@@ -25,7 +25,7 @@ public class EventGenerator implements Generator {
     @Value("${topic-name:events-stream}")
     private String topicName;
 
-    @Value("${takeWhile:10}")
+    @Value("${takeWhile:20}")
     private int takeWhile;
 
     @Override
@@ -55,7 +55,7 @@ public class EventGenerator implements Generator {
         String tsStr = String.valueOf(timestamp);
         tsStr = tsStr.substring(tsStr.length() - 3);
         Date now = new Date(timestamp);
-        return Event.builder().id("key" + i).data("Data: " + now.toString() + ", " + tsStr)
+        return Event.builder().id("key" + i%5).data("Data: " + now.toString() + ", " + tsStr)
             .type(types[random.nextInt() % types.length])
             .timestamp(timestamp).build();
     }
