@@ -39,13 +39,9 @@ public class EventGenerator implements Generator {
             .flatMap(Flux::fromIterable)
             .take(takeWhile)
         .subscribe(g -> {
-            producer.send(new ProducerRecord<>(topicName, g.getId(), g),
-                new Callback() {
-                    @Override
-                    public void onCompletion(RecordMetadata metadata, Exception exception) {
-                        System.out.println();
-                    }
-                }
+            producer.send(
+                new ProducerRecord<>(topicName, g.getId(), g),
+                (metadata, exception) -> System.out.println()
             );
         });
     }
