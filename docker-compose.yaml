@@ -104,3 +104,22 @@ services:
       - 8085:8085
     networks:
       - kafka1
+
+
+  schema-registry-ui-1:
+    container_name: schema-registry-ui-1
+    image: landoop/schema-registry-ui:latest
+    restart: always
+    depends_on:
+      - zookeeper-1
+      - kafka-1
+      - schema-registry-1
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+      PORT: 8082
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry-1
+      SCHEMAREGISTRY_URL: "http://schema-registry-1:8085"
+    ports:
+      - 8082:8082
+    networks:
+      - kafka1
