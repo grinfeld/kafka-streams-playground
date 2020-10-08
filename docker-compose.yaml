@@ -43,48 +43,6 @@ services:
       KAFKA_REPLICATION_FACTOR: 1
     networks:
       - kafka1
-#
-#  kafka-2:
-#    container_name: kafka-2
-#    ports:
-#      - 19092:19092
-#    image: confluentinc/cp-kafka:5.5.1
-#    links:
-#      - zookeeper-1
-#    depends_on:
-#      - zookeeper-1
-#    environment:
-#      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
-#      KAFKA_BROKER_ID: 2
-#      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
-#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:19092
-#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-#    #      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#    #      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-#    #      KAFKA_REPLICATION_FACTOR: 1
-#    networks:
-#      - kafka1
-#
-#  kafka-3:
-#    container_name: kafka-3
-#    ports:
-#      - 29092:29092
-#    image: confluentinc/cp-kafka:5.5.1
-#    links:
-#      - zookeeper-1
-#    depends_on:
-#      - zookeeper-1
-#    environment:
-#      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
-#      KAFKA_BROKER_ID: 3
-#      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
-#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:29092
-#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-#    #      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#    #      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-#    #      KAFKA_REPLICATION_FACTOR: 1
-#    networks:
-#      - kafka1
 
   schema-registry-1:
     container_name: schema-registry-1
