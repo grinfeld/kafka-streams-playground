@@ -1,0 +1,106 @@
+version: '3.1'
+
+networks:
+  kafka1:
+    driver: "bridge"
+
+services:
+
+  zookeeper-1:
+    container_name: zookeeper-1
+    image: confluentinc/cp-zookeeper:5.5.1
+    ports:
+      - 2181:2181
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper-1:2888:3888
+    networks:
+      - kafka1
+
+  kafka-1:
+    container_name: kafka-1
+    ports:
+      - 9092:9092
+    image: confluentinc/cp-kafka:5.5.1
+    links:
+      - zookeeper-1
+    depends_on:
+      - zookeeper-1
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_REPLICATION_FACTOR: 1
+    networks:
+      - kafka1
+#
+#  kafka-2:
+#    container_name: kafka-2
+#    ports:
+#      - 19092:19092
+#    image: confluentinc/cp-kafka:5.5.1
+#    links:
+#      - zookeeper-1
+#    depends_on:
+#      - zookeeper-1
+#    environment:
+#      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+#      KAFKA_BROKER_ID: 2
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:19092
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+#    #      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    #      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+#    #      KAFKA_REPLICATION_FACTOR: 1
+#    networks:
+#      - kafka1
+#
+#  kafka-3:
+#    container_name: kafka-3
+#    ports:
+#      - 29092:29092
+#    image: confluentinc/cp-kafka:5.5.1
+#    links:
+#      - zookeeper-1
+#    depends_on:
+#      - zookeeper-1
+#    environment:
+#      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+#      KAFKA_BROKER_ID: 3
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:29092
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+#    #      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    #      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+#    #      KAFKA_REPLICATION_FACTOR: 1
+#    networks:
+#      - kafka1
+
+  schema-registry-1:
+    container_name: schema-registry-1
+    image: confluentinc/cp-schema-registry:5.5.0
+    restart: always
+    depends_on:
+      - zookeeper-1
+      - kafka-1
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper-1:2181"
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8085"
+      SCHEMA_REGISTRY_ACCESS_CONTROL_ALLOW_METHODS: "GET,POST,PUT,OPTIONS"
+      SCHEMA_REGISTRY_ACCESS_CONTROL_ALLOW_ORIGIN: "*"
+    ports:
+      - 8085:8085
+    networks:
+      - kafka1
