@@ -6,22 +6,20 @@
         <artifactId>kafka-streams</artifactId>
         <groupId>com.mikerusoft.playground</groupId>
         <version>1.0</version>
-        <relativePath>..</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kafka-streams-init</artifactId>
 
+    <properties>
+        <kafka.version>2.7.0</kafka.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-streams</artifactId>
-            <version>2.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-avro-serializer</artifactId>
-            <version>5.5.1</version>
+            <version>${kafka.version}</version>
         </dependency>
     </dependencies>
 

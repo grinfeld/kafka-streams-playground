@@ -11,6 +11,7 @@
         <module>message-monitoring</module>
         <module>simple</module>
         <module>avro-generator</module>
+        <module>cdc-serdes</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>
