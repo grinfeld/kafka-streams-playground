@@ -62,7 +62,7 @@ public class KStreamWrapper<T> {
 
         @Override
         public void init(ProcessorContext context) {
-            store = context.getStateStore(stateStore);
+            store = (KeyValueStore<SK, SV>)context.getStateStore(stateStore);
         }
 
         @Override
