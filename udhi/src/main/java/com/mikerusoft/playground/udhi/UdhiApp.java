@@ -15,6 +15,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -55,7 +58,7 @@ public class UdhiApp implements CommandLineRunner {
         KStream<String, UdhiMessage> udhiStream = branch[1];
         udhiStream
                 .groupByKey()
-                .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(10)))
+                .windowedBy(TimeWindows.of(Duration.of(10L, ChronoUnit.MINUTES)))
                 .aggregate(
                     GroupMessage::new,
                     (k, v, a) -> Utils.addMessageToGroup(v, a),

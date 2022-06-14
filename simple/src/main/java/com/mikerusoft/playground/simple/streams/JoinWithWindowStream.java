@@ -10,6 +10,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 
+import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +39,7 @@ public class JoinWithWindowStream implements Streamable {
                 ).withTimestampExtractor(new JsonTimestampExtractor<>(MyObject.class, MyObject::getTimestamp))
             );
 
-        stream1.join(stream2, MyObject::mergeWith, JoinWindows.of(TimeUnit.SECONDS.toMillis(60L)))
+        stream1.join(stream2, MyObject::mergeWith, JoinWindows.of(Duration.ofSeconds(60)))
         .to("join-result", createProduced(MyObject.class));
 
         Topology topology = builder.build();

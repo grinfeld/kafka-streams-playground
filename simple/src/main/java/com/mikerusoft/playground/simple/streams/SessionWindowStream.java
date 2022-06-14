@@ -15,6 +15,7 @@ import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -66,9 +67,9 @@ public class SessionWindowStream implements Streamable {
     }
 
     private SessionWindows createWindow() {
-        SessionWindows window = SessionWindows.with(TimeUnit.SECONDS.toMillis(windowDurationSec));
+        SessionWindows window = SessionWindows.with(Duration.ofSeconds(windowDurationSec));
         if (expireAtSec > 0)
-            window = window.until(TimeUnit.SECONDS.toMillis(expireAtSec));
+            window = window.grace(Duration.ofSeconds(expireAtSec));
         return window;
     }
 

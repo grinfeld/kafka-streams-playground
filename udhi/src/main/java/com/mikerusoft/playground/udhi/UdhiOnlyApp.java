@@ -15,6 +15,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.Duration;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public class UdhiOnlyApp implements CommandLineRunner {
         final StreamsBuilder builder = new StreamsBuilder();
             KafkaStreamUtils.createStringJsonStream(UdhiMessage.class, "received-messages", builder)
                 .groupByKey()
-                .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(10)))
+                .windowedBy(TimeWindows.of(Duration.ofMinutes(10)))
                 .aggregate(
                     GroupMessage::new,
                     (k, v, a) -> Utils.addMessageToGroup(v, a),

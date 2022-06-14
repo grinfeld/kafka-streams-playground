@@ -17,8 +17,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.Duration;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SpringBootApplication
@@ -64,8 +64,8 @@ public class DrApp implements CommandLineRunner {
                 }
                 return dr.toBuilder().id(sent.getId()).build();
             },
-            JoinWindows.of(TimeUnit.SECONDS.toMillis(60L)),
-            Joined.with(Serdes.String(), new JSONSerde<>(SentMessage.class), new JSONSerde<>(MessageStatus.class))
+            JoinWindows.of(Duration.ofSeconds(60L)),
+            StreamJoined.with(Serdes.String(), new JSONSerde<>(SentMessage.class), new JSONSerde<>(MessageStatus.class))
         );
 
         joinedStream

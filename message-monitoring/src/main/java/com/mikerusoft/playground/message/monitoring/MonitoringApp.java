@@ -25,6 +25,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -177,7 +178,7 @@ public class MonitoringApp implements CommandLineRunner {
             public void init(ProcessorContext context) {
                 this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
                 this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
-                context.schedule(100L, PunctuationType.WALL_CLOCK_TIME, time -> {
+                context.schedule(Duration.ofMillis(100L), PunctuationType.WALL_CLOCK_TIME, time -> {
                     long now = System.currentTimeMillis();
                     KeyValueIterator<String, MessageMonitor> all = this.monitorStore.all();
                     List<KeyValue<String, MessageMonitor>> alertsToBeSent = new ArrayList<>();

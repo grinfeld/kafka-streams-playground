@@ -26,6 +26,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -102,7 +103,7 @@ public class UdhiNoWindowWithProcessorApp implements CommandLineRunner {
         public void init(ProcessorContext context) {
             this.context = context;
             this.kvStore = (KeyValueStore<String, GroupMessage>) context.getStateStore("waiting-for-last-udhi");
-            this.context.schedule(5000L, PunctuationType.WALL_CLOCK_TIME, (timestamp) -> {
+            this.context.schedule(Duration.ofMillis(5000L), PunctuationType.WALL_CLOCK_TIME, (timestamp) -> {
                 long current = System.currentTimeMillis();
                 List<String> toBeResendAsSingles = new ArrayList<>();
                 List<String> toBeRemoved = new ArrayList<>();

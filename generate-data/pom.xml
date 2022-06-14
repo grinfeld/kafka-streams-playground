@@ -21,11 +21,11 @@
             <artifactId>models</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
-        <dependency>
+<!--        <dependency>
             <groupId>com.mikerusoft.playground</groupId>
             <artifactId>avro-generator</artifactId>
             <version>${project.parent.version}</version>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>com.mikerusoft.playground</groupId>
             <artifactId>kafka-streams-init</artifactId>

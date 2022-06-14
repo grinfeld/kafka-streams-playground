@@ -7,8 +7,8 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.Serialized;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -22,7 +22,7 @@ public class CountStream implements Streamable {
         final StreamsBuilder builder = new StreamsBuilder();
         builder.stream("counter-topic", Consumed.with(Serdes.String(), Serdes.Integer()))
                 .peek((k,v) -> log.info("get event {} with key {}", v, k))
-                .groupByKey(Serialized.with(Serdes.String(), Serdes.Integer()))
+                .groupByKey(Grouped.with(Serdes.String(), Serdes.Integer()))
                 .count()
                 .toStream()
                 .filter((k,v) -> v > 1)

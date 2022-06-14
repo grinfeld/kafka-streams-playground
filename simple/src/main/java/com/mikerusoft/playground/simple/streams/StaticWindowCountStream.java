@@ -10,6 +10,7 @@ import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -28,8 +29,8 @@ public class StaticWindowCountStream implements Streamable {
         builder
             .stream("counter-topic", Consumed.with(Serdes.String(), Serdes.Integer()))
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
-            .groupByKey(Serialized.with(Serdes.String(), Serdes.Integer()))
-            .windowedBy(SessionWindows.with(TimeUnit.SECONDS.toMillis(5)))
+            .groupByKey(Grouped.with(Serdes.String(), Serdes.Integer()))
+            .windowedBy(SessionWindows.with(Duration.ofSeconds(5)))
             .count()
             // (Windowed<String>, Long)
             .toStream((key, value) -> {

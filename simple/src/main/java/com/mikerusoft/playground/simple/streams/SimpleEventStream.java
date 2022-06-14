@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
@@ -55,7 +56,7 @@ public class SimpleEventStream implements Streamable {
         waitForQueryStoreToBeReady(timeStoreName, timeStream, waitForQueryable);
 
         ReadOnlyKeyValueStore<String, Long> eventTimeStore =
-                timeStream.store(timeStoreName, QueryableStoreTypes.keyValueStore());
+                timeStream.store(StoreQueryParameters.fromNameAndType(timeStoreName, QueryableStoreTypes.keyValueStore()));
 
         Properties mainStreamConfig = KafkaStreamUtils.streamProperties("events-stream-main" + UUID.randomUUID().toString(), url, Event.class);
         final StreamsBuilder mainStreamBuilder = new StreamsBuilder();
@@ -90,7 +91,7 @@ public class SimpleEventStream implements Streamable {
         try {
             waitForQueryable.scheduleAtFixedRate(() -> {
                 try {
-                    timeStream.store(timeStoreName, QueryableStoreTypes.keyValueStore());
+                    timeStream.store(StoreQueryParameters.fromNameAndType(timeStoreName, QueryableStoreTypes.keyValueStore()));
                     log.warn("found....");
                     waitForQueryable.shutdown();
                 } catch (Exception e) {
