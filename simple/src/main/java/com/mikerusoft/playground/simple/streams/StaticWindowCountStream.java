@@ -30,7 +30,7 @@ public class StaticWindowCountStream implements Streamable {
             .stream("counter-topic", Consumed.with(Serdes.String(), Serdes.Integer()))
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
             .groupByKey(Grouped.with(Serdes.String(), Serdes.Integer()))
-            .windowedBy(SessionWindows.with(Duration.ofSeconds(5)))
+            .windowedBy(SessionWindows.ofInactivityGapWithNoGrace(Duration.ofSeconds(5)))
             .count()
             // (Windowed<String>, Long)
             .toStream((key, value) -> {

@@ -23,7 +23,7 @@ import static com.mikerusoft.playground.kafkastreamsinit.KafkaStreamUtils.create
 
 @Slf4j
 @Component("session")
-public class SessionWindowStream implements Streamable {
+public class SlidingWindowStream implements Streamable {
 
     @Value("${expireAtSec:240}")
     private int expireAtSec;
@@ -45,11 +45,12 @@ public class SessionWindowStream implements Streamable {
         stream
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
             .groupByKey()
-            .windowedBy(createWindow())
-            .aggregate(Counter::new, (k, v, a) -> a.op(1),
-                (k, a1, a2) -> new Counter().op(a1.getCounter()).op(a2.getCounter()),
-                Materialized.with(Serdes.String(), new JSONSerde<>(Counter.class))
-            )
+            .windowedBy(SlidingWindows.ofTimeDifferenceWithNoGrace(Duration.ofSeconds(windowDurationSec)))
+                .aggregate(
+                    Counter::new,
+                    (k, v, a) -> a.op(1),
+                    Materialized.with(Serdes.String(), new JSONSerde<>(Counter.class))
+                )
             .toStream()
             .peek((key, value) -> log.info("Window start at {} end at {} with key {} and data {}",
                 new Date(key.window().start()),
@@ -63,12 +64,6 @@ public class SessionWindowStream implements Streamable {
         System.out.println("" + topology.describe());
 
         KafkaStreamUtils.runStream(new KafkaStreams(topology, config));
-    }
-
-    private SessionWindows createWindow() {
-        if (expireAtSec > 0)
-            return SessionWindows.ofInactivityGapAndGrace(Duration.ofSeconds(windowDurationSec), Duration.ofSeconds(expireAtSec));
-        return SessionWindows.ofInactivityGapWithNoGrace(Duration.ofSeconds(windowDurationSec));
     }
 
     private static String getStingKeyForWindow(Windowed<String> key) {

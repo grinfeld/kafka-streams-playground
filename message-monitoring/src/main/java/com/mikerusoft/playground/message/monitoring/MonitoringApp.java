@@ -148,8 +148,8 @@ public class MonitoringApp implements CommandLineRunner {
             @Override
             public void init(ProcessorContext context) {
                 this.context = context;
-                this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
-                this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
+                this.monitorStore = context.getStateStore(aggrStoreName);
+                this.receivedStore = context.getStateStore(receivedMessageStateStoreName);
             }
 
             @Override
@@ -176,8 +176,8 @@ public class MonitoringApp implements CommandLineRunner {
 
             @Override
             public void init(ProcessorContext context) {
-                this.monitorStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(aggrStoreName);
-                this.receivedStore = (KeyValueStore<String, MessageMonitor>) context.getStateStore(receivedMessageStateStoreName);
+                this.monitorStore = context.getStateStore(aggrStoreName);
+                this.receivedStore = context.getStateStore(receivedMessageStateStoreName);
                 context.schedule(Duration.ofMillis(100L), PunctuationType.WALL_CLOCK_TIME, time -> {
                     long now = System.currentTimeMillis();
                     KeyValueIterator<String, MessageMonitor> all = this.monitorStore.all();

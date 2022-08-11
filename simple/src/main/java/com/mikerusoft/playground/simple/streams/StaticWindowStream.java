@@ -43,7 +43,7 @@ public class StaticWindowStream implements Streamable {
         stream
             .peek(((key, value) -> log.info("received {} -> {}", key, value)))
             .groupByKey()
-            .windowedBy(TimeWindows.of(Duration.ofSeconds(windowDurationSec)))
+            .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(windowDurationSec)))
             .aggregate(Counter::new, (k, v, a) -> a.op(1),
                     Materialized.with(Serdes.String(), new JSONSerde<>(Counter.class)))
             .toStream()
